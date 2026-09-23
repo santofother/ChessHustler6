@@ -1,0 +1,24 @@
+{
+  "name": "grand-theft-chess",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Grand Theft Chess - real chess dressed as GTA VI (Three.js + Vite)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "ai:bench": "node tools/ai_bench.mjs",
+    "test": "node tools/rules_test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chess.js": "1.4.0",
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "vite": "6.3.5"
+  }
+}

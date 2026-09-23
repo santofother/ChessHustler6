@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1b1036" />
+    <title>Grand Theft Chess</title>
+    <!-- no favicon: empty data URI stops the browser from requesting /favicon.ico -->
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #1b1036;
+        color: #fff;
+        font-family: 'Inter', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      #app {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        background: linear-gradient(180deg, #1b1036 0%, #4a1d5c 55%, #ff5fa2 85%, #ff9a3c 100%);
+      }
+      #app > canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        outline: none;
+      }
+      #hud {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+      /* boot error / notice overlay (main.js) */
+      .gtc-boot-msg {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 100;
+        max-width: min(640px, calc(100vw - 32px));
+        box-sizing: border-box;
+        padding: 20px 24px;
+        border-radius: 14px;
+        background: rgba(20, 8, 36, 0.92);
+        border: 2px solid #ff5fa2;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        font: 14px/1.5 'Inter', system-ui, sans-serif;
+        pointer-events: auto;
+        user-select: text;
+        -webkit-user-select: text;
+      }
+      .gtc-boot-msg h1 {
+        margin: 0 0 8px;
+        font: 32px/1 'Bebas Neue', 'Anton', Impact, sans-serif;
+        letter-spacing: 1px;
+        color: #ff9a3c;
+      }
+      .gtc-boot-msg pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 8px 0 0;
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.35);
+        color: #ffd36b;
+        font-size: 12px;
+      }
+      .gtc-boot-msg a {
+        color: #29e3d6;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="hud"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
