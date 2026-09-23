@@ -312,10 +312,39 @@ function evaluate(a) {
 const moveKey = (m) => m.from | (m.to << 7) | ((m.promotion ? ORD[m.promotion] : 0) << 14);
 const isTactical = (m) => (m.flags & (F_CAPTURE | F_EP | F_PROMO)) !== 0;
 
+const clampN = (v, lo, hi, d) => (Number.isFinite(+v) ? Math.max(lo, Math.min(hi, +v)) : d);
+
+/** Is this a bot profile object (Hustler BOT_PROFILES entry) rather than a level number? */
+export function isProfile(x) {
+  return !!x && typeof x === 'object';
+}
+
+/**
+ * Normalize a Hustler bot profile ({ maxDepth, timeMs, quiescence, noiseCp, randomChance, topN, blunderChance })
+ * into the internal level config shape. Missing/garbage fields get safe defaults.
+ */
+export function profileConfig(p = {}) {
+  const depth = Math.round(clampN(p.maxDepth, 0, 5, 2));
+  const randomChance = clampN(p.randomChance, 0, 1, 0);
+  return {
+    name: String(p.label || 'Profile'),
+    depth,
+    quiesce: !!p.quiescence,
+    budget: Math.round(clampN(p.timeMs, 20, 4000, 500)), // ai.js kills searches after 6s
+    noise: Math.round(clampN(p.noiseCp, 0, 1000, 0)),
+    randomTop: Math.round(clampN(p.topN, 1, 64, 3)),
+    randomChance,
+    blunderChance: clampN(p.blunderChance, 0, 1, 0),
+    // maxDepth 0 only: chance to pick a random capture when one exists (balance.js calls it captureBias)
+    capturePref: clampN(p.captureBias ?? p.capturePreference, 0, 1, 0.6),
+  };
+}
+
 class Searcher {
   constructor(adapter, level, opts = {}) {
     this.a = adapter;
-    this.cfg = LEVELS[level] || LEVELS[2];
+    this.cfg = isProfile(level) ? profileConfig(level) : LEVELS[level] || LEVELS[2];
+    if (this.cfg.depth < 1) this.cfg = { ...this.cfg, depth: 1 };
     this.rng = opts.rng || Math.random;
     this.budget = opts.budgetMs ?? this.cfg.budget;
     this.maxDepth = opts.maxDepth ?? this.cfg.depth;
@@ -555,7 +584,7 @@ class Searcher {
 /**
  * Search a position.
  * @param {string} fen
- * @param {number} level 1..4
+ * @param {number|object} level 1..4 or a bot profile object (see profileConfig)
  * @param {{rng?:()=>number, budgetMs?:number, maxDepth?:number, quiesce?:boolean, forcePublic?:boolean}} opts
  * @returns {{move:{from,to,promotion}|null, depth:number, score:number, nodes:number, ms:number, fast:boolean}}
  */
@@ -566,6 +595,43 @@ export function search(fen, level = 2, opts = {}) {
   const res = new Searcher(adapter, level, opts).run();
   res.fast = useFast;
   return res;
+}
+
+/**
+ * Pick a move for a level number (1..4, identical to search()) or a Hustler bot profile object.
+ * Profiles add two "street" behaviours on top of the search:
+ *   blunderChance  per-move chance to play a uniformly random legal move instead of searching
+ *   maxDepth 0     no search at all: random legal move, preferring captures (captureBias, default 0.6)
+ * @returns same shape as search() plus `kind: 'search'|'blunder'|'random'`
+ */
+export function chooseMove(fen, levelOrProfile = 2, opts = {}) {
+  if (!isProfile(levelOrProfile)) return { ...search(fen, levelOrProfile, opts), kind: 'search' };
+  const cfg = profileConfig(levelOrProfile);
+  const rng = opts.rng || Math.random;
+  const t0 = nowMs();
+  const quick = (kind, prefCaptures) => {
+    const c = new Chess(fen);
+    const ms = c.moves({ verbose: true });
+    if (!ms.length) return { move: null, depth: 0, score: c.inCheck() ? -MATE : 0, nodes: 0, ms: 0, fast: false, kind };
+    let pool = ms;
+    if (prefCaptures) {
+      const caps = ms.filter((m) => m.captured);
+      if (caps.length && rng() < cfg.capturePref) pool = caps;
+    }
+    const m = pool[Math.floor(rng() * pool.length)] || pool[0];
+    return {
+      move: { from: m.from, to: m.to, promotion: m.promotion || undefined },
+      depth: 0,
+      score: 0,
+      nodes: ms.length,
+      ms: Math.round(nowMs() - t0),
+      fast: false,
+      kind,
+    };
+  };
+  if (cfg.depth === 0) return quick('random', true);
+  if (cfg.blunderChance > 0 && rng() < cfg.blunderChance) return quick('blunder', false);
+  return { ...search(fen, levelOrProfile, opts), kind: 'search' };
 }
 
 /** Uniform random legal move (used as a last-resort fallback). */

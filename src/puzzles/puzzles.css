@@ -1,0 +1,784 @@
+/* =====================================================================
+   HUSTLE BOARD — chess puzzle overlay (Hustler Mode side hustle)
+   Lives inside #hud (.gtc-root, pointer-events:none). Only interactive parts opt in with .gtp-int.
+   Shares the HUD's visual language: Bebas/Anton display type, sunset gradient, phone chrome,
+   GTA-green cash. All feedback is soft fades/slides — no strobing, no screen flashes.
+   ===================================================================== */
+.gtp {
+  --pink: #ff5fa2;
+  --orange: #ff9a3c;
+  --yellow: #ffd36b;
+  --navy: #1b1036;
+  --teal: #29e3d6;
+  --acid: #c6ff3d;
+  --cash: #7fd46b;
+  --nope: #ff7a8a;
+  --sunset: linear-gradient(135deg, var(--pink) 0%, var(--orange) 55%, var(--yellow) 100%);
+  --f-display: 'Bebas Neue', 'Anton', Impact, 'Arial Narrow Bold', sans-serif;
+  --f-heavy: 'Anton', 'Bebas Neue', Impact, 'Arial Black', sans-serif;
+  --f-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --gut: clamp(12px, 2.2vw, 28px);
+
+  position: absolute;
+  inset: 0;
+  z-index: 25; /* above HUD banners (20), below the promotion modal (40) */
+  pointer-events: none;
+  color: #fff;
+  font-family: var(--f-body);
+  line-height: 1.2;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.gtp *,
+.gtp *::before,
+.gtp *::after {
+  box-sizing: border-box;
+}
+.gtp button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.gtp button:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+.gtp-int {
+  pointer-events: auto;
+}
+.gtp-layer {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+.gtp-layer.is-on {
+  display: block;
+  animation: gtp-fade 0.35s ease both;
+}
+@keyframes gtp-fade {
+  from {
+    opacity: 0;
+  }
+}
+.gtp .gtc-ico {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+  fill: currentColor;
+}
+.gtp-money {
+  font-family: var(--f-heavy);
+  color: var(--cash);
+  -webkit-text-stroke: 1px #0b1f08;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 #0b1f08;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+/* ---------------------------------------------------------------- phone chrome (matches .gtc-pm) */
+.gtp-phone {
+  position: relative;
+  border-radius: 30px;
+  background:
+    radial-gradient(120% 40% at 50% 0%, rgba(255, 95, 162, 0.22), transparent 70%),
+    linear-gradient(170deg, #26154a 0%, #1b1036 45%, #0f0820 100%);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.1),
+    0 0 0 9px #07060b,
+    0 0 0 10px rgba(255, 255, 255, 0.14),
+    0 30px 70px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.gtp-sb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding: 4px 4px 0;
+  font: 700 12px/1 var(--f-body);
+}
+.gtp-sb__notch {
+  width: 78px;
+  height: 20px;
+  border-radius: 12px;
+  background: #07060b;
+}
+.gtp-sb__right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.gtp-sb__right small {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  opacity: 0.7;
+}
+.gtp-sb .gtc-sb-ico {
+  width: 15px;
+  height: 10px;
+  fill: currentColor;
+}
+.gtp-sb .gtc-sb-ico--bat {
+  width: 22px;
+}
+.gtp-kicker {
+  display: block;
+  font: 800 10px/1.2 var(--f-body);
+  letter-spacing: 0.22em;
+  color: var(--pink);
+}
+
+/* =====================================================================
+   PICKER
+   ===================================================================== */
+.gtp-picker.is-on {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: var(--gut) calc(var(--gut) * 2);
+}
+.gtp-picker__bg {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(18, 10, 38, 0.88) 0%, rgba(27, 16, 54, 0.55) 45%, rgba(27, 16, 54, 0.15) 70%, rgba(18, 10, 38, 0.55) 100%),
+    linear-gradient(0deg, rgba(18, 10, 38, 0.7) 0%, transparent 40%);
+}
+.gtp-picker__left {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 560px;
+  animation: gtp-slide 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes gtp-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+}
+.gtp-logo__small {
+  font: 34px/0.9 var(--f-heavy);
+  letter-spacing: 0.04em;
+  text-shadow: 0 3px 0 var(--navy), 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+.gtp-logo__big {
+  margin-top: 2px;
+  font: clamp(64px, 9vw, 112px) / 0.86 var(--f-heavy);
+  background: linear-gradient(180deg, #fff 0%, #fff 45%, #ffe3ef 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 5px 0 var(--navy)) drop-shadow(0 8px 24px rgba(0, 0, 0, 0.55));
+}
+.gtp-logo__sub {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 6px 12px 4px;
+  font: 22px/1 var(--f-display);
+  letter-spacing: 0.3em;
+  background: var(--sunset);
+  color: var(--navy);
+  transform: skewX(-10deg);
+  box-shadow: 0 6px 18px rgba(255, 95, 162, 0.35);
+}
+.gtp-logo__sub span {
+  display: inline-block;
+  transform: skewX(10deg);
+}
+.gtp-picker__tag {
+  margin: 22px 0 0 2px;
+  max-width: 440px;
+  font: 600 15px/1.5 var(--f-body);
+  color: rgba(255, 255, 255, 0.75);
+}
+.gtp-picker__stats {
+  display: flex;
+  gap: 26px;
+  margin: 22px 0 0 2px;
+}
+.gtp-stat b {
+  display: block;
+  font: 38px/1 var(--f-display);
+  letter-spacing: 0.03em;
+}
+.gtp-stat b.gtp-money {
+  font-family: var(--f-heavy);
+  font-size: 32px;
+}
+.gtp-stat span {
+  font: 800 10px/1 var(--f-body);
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.55);
+}
+.gtp-credit {
+  margin: 26px 0 0 2px;
+  font: 500 10.5px/1.4 var(--f-body);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.gtp-picker__phone {
+  position: relative;
+  flex: none;
+  width: 390px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0 18px 16px;
+  animation: gtp-phonein 0.6s 0.08s cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+}
+@keyframes gtp-phonein {
+  from {
+    opacity: 0;
+    transform: translateY(50px) rotate(3deg);
+  }
+}
+.gtp-head {
+  padding: 12px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.gtp-head b {
+  display: block;
+  margin-top: 6px;
+  font: 40px/0.95 var(--f-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+.gtp-tiers {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 0 4px;
+}
+.gtp-tier {
+  position: relative;
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  grid-template-areas: 'ico name pay' 'ico blurb blurb' 'ico bar bar';
+  gap: 3px 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px 12px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  text-align: left;
+  transition: transform 0.14s, background 0.2s, box-shadow 0.2s;
+}
+.gtp-tier:hover,
+.gtp-tier.is-focus {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 2px var(--yellow), 0 8px 24px rgba(255, 154, 60, 0.25);
+  transform: translateY(-1px);
+}
+.gtp-tier:active {
+  transform: scale(0.98);
+}
+.gtp-tier__ico {
+  grid-area: ico;
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  background: var(--sunset);
+  color: var(--navy);
+}
+.gtp-tier[data-i='3'] .gtp-tier__ico {
+  background: linear-gradient(160deg, #2a2a2a, #0d0d0d);
+  color: var(--yellow);
+  box-shadow: inset 0 0 0 2px var(--acid);
+}
+.gtp-tier__name {
+  grid-area: name;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font: 23px/1 var(--f-display);
+  letter-spacing: 0.06em;
+}
+.gtp-tier__name small {
+  font: 700 10px/1 var(--f-body);
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.5);
+}
+.gtp-tier__pay {
+  grid-area: pay;
+  font-size: 19px;
+  white-space: nowrap;
+}
+.gtp-tier__blurb {
+  grid-area: blurb;
+  font: 500 11.5px/1.35 var(--f-body);
+  color: rgba(255, 255, 255, 0.62);
+}
+.gtp-tier__bar {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 5px;
+  font: 700 10px/1 var(--f-body);
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+.gtp-tier__bar i {
+  position: relative;
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.gtp-tier__bar i b {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  background: linear-gradient(90deg, #4caf50, var(--cash));
+  border-radius: 3px;
+}
+.gtp-tier.is-clear .gtp-tier__bar {
+  color: var(--cash);
+}
+.gtp-picker__foot {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding-top: 12px;
+}
+.gtp-hintkeys {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+  font: 700 9.5px/1 var(--f-body);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+}
+.gtp kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 5px;
+  margin-right: 3px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-bottom-width: 2px;
+  font: 700 10px/1.4 var(--f-body);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+.gtp-error {
+  padding: 18px 4px;
+  font: 600 13px/1.5 var(--f-body);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ---------------------------------------------------------------- buttons */
+.gtp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 11px 12px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  font: 20px/1 var(--f-display) !important;
+  letter-spacing: 0.1em;
+  transition: transform 0.12s, background 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+.gtp-btn:hover {
+  background: rgba(255, 255, 255, 0.17);
+}
+.gtp-btn:active {
+  transform: scale(0.97);
+}
+.gtp-btn[disabled] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.gtp-btn--primary {
+  background: var(--sunset);
+  color: var(--navy) !important;
+  box-shadow: 0 8px 22px rgba(255, 95, 162, 0.38);
+}
+.gtp-btn--primary:hover {
+  background: var(--sunset);
+  box-shadow: 0 0 0 3px #fff, 0 10px 26px rgba(255, 95, 162, 0.5);
+}
+.gtp-btn--ghost {
+  background: transparent;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* =====================================================================
+   PLAY
+   ===================================================================== */
+.gtp-card {
+  position: absolute;
+  top: var(--gut);
+  left: var(--gut);
+  width: 318px;
+  padding: 0 16px 14px;
+  border-radius: 26px;
+  animation: gtp-cardin 0.5s cubic-bezier(0.2, 0.9, 0.25, 1.1) both;
+}
+@keyframes gtp-cardin {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+}
+.gtp-card__head {
+  padding: 8px 0 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+.gtp-card__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+.gtp-card__side {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 32px/0.95 var(--f-display);
+  letter-spacing: 0.04em;
+}
+.gtp-card__side i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  transform: rotate(45deg);
+  flex: none;
+}
+.gtp-card__side i.is-w {
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--pink);
+}
+.gtp-card__side i.is-b {
+  background: #111;
+  box-shadow: 0 0 0 2px var(--acid);
+}
+.gtp-card__pay {
+  font-size: 26px;
+  white-space: nowrap;
+}
+.gtp-card__pay.is-none {
+  font: 14px/1 var(--f-display);
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.5);
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+}
+.gtp-card__goal {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13px/1.3 var(--f-body);
+  color: rgba(255, 255, 255, 0.78);
+}
+.gtp-chip {
+  display: inline-block;
+  padding: 3px 7px 2px;
+  border-radius: 4px;
+  background: var(--sunset);
+  color: var(--navy);
+  font: 14px/1.1 var(--f-display);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.gtp-chip--ghost {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+.gtp-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.gtp-dots b {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background 0.3s;
+}
+.gtp-dots b.is-on {
+  background: var(--cash);
+}
+
+/* message bubble (chat style) */
+.gtp-msg {
+  position: relative;
+  margin: 12px 0 12px;
+  padding: 10px 13px 11px;
+  border-radius: 14px 14px 14px 4px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  font: 500 13.5px/1.4 var(--f-body);
+  min-height: 42px;
+  transition: background 0.35s, box-shadow 0.35s;
+}
+.gtp-msg b {
+  font: 17px/1 var(--f-display);
+  letter-spacing: 0.1em;
+  margin-right: 6px;
+}
+.gtp-msg.is-new {
+  animation: gtp-msgin 0.35s ease-out both;
+}
+@keyframes gtp-msgin {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.gtp-msg--nope {
+  background: rgba(255, 122, 138, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 122, 138, 0.35);
+}
+.gtp-msg--nope b {
+  color: var(--nope);
+}
+.gtp-msg--good b {
+  color: var(--cash);
+}
+.gtp-msg--hint b {
+  color: var(--yellow);
+}
+.gtp-msg--done {
+  background: rgba(127, 212, 107, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(127, 212, 107, 0.35);
+}
+.gtp-msg--done b {
+  color: var(--cash);
+}
+.gtp-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 7px;
+}
+.gtp-actions .gtp-btn {
+  font-size: 18px !important;
+  padding: 10px 6px 7px;
+}
+.gtp-actions--done {
+  grid-template-columns: 1.4fr 1fr 1fr;
+}
+.gtp-card__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font: 700 9.5px/1 var(--f-body);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.42);
+}
+.gtp-card__foot a {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+}
+.gtp-card__foot a:hover {
+  color: var(--teal);
+}
+
+/* soft "NOPE" pill near the top center (no flash, no shake) */
+.gtp-nope {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--gut) + 6px);
+  transform: translateX(-50%);
+  padding: 8px 18px 5px;
+  border-radius: 999px;
+  background: rgba(14, 10, 24, 0.82);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1px rgba(255, 122, 138, 0.45), 0 10px 30px rgba(0, 0, 0, 0.35);
+  font: 30px/1 var(--f-heavy);
+  letter-spacing: 0.08em;
+  color: var(--nope);
+  opacity: 0;
+  pointer-events: none;
+}
+.gtp-nope small {
+  display: block;
+  margin-top: 3px;
+  font: 700 10px/1.2 var(--f-body);
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+.gtp-nope.is-on {
+  animation: gtp-soft 1.9s ease both;
+}
+@keyframes gtp-soft {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  14%,
+  75% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* reward toast — GTA-green cash, gentle rise + fade */
+.gtp-reward {
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+}
+.gtp-reward.is-on {
+  animation: gtp-reward 3.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes gtp-reward {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 18px) scale(0.94);
+  }
+  12%,
+  78% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(1);
+  }
+}
+.gtp-reward__band {
+  padding: 12px 60px 14px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.6) 20%, rgba(0, 0, 0, 0.6) 80%, transparent 100%);
+}
+.gtp-reward__kick {
+  font: 24px/1 var(--f-display);
+  letter-spacing: 0.34em;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+.gtp-reward__amt {
+  margin-top: 4px;
+  font-size: clamp(54px, 8vw, 92px);
+  line-height: 1;
+  -webkit-text-stroke: 2px #0b1f08;
+  text-shadow: 0 4px 0 #0b1f08, 0 0 26px rgba(127, 212, 107, 0.3);
+}
+.gtp-reward__amt.is-zero {
+  font-size: clamp(34px, 5vw, 56px);
+  color: #e6e6e6;
+  -webkit-text-stroke: 1.5px #1c1c1c;
+  text-shadow: 0 3px 0 #1c1c1c;
+}
+.gtp-reward__sub {
+  margin-top: 6px;
+  font: 700 11px/1.3 var(--f-body);
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* =====================================================================
+   RESPONSIVE
+   ===================================================================== */
+@media (max-width: 900px) {
+  .gtp-picker.is-on {
+    padding: var(--gut);
+  }
+  .gtp-picker__phone {
+    width: 350px;
+  }
+}
+@media (max-width: 760px) {
+  .gtp-picker.is-on {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 14px;
+    overflow-y: auto;
+    pointer-events: auto;
+    padding: 16px 16px 24px;
+  }
+  .gtp-picker__left {
+    flex: none;
+    text-align: center;
+    max-width: none;
+  }
+  .gtp-logo__big {
+    font-size: 64px;
+  }
+  .gtp-picker__tag,
+  .gtp-credit {
+    display: none;
+  }
+  .gtp-picker__stats {
+    justify-content: center;
+    margin-top: 14px;
+  }
+  .gtp-picker__phone {
+    width: 100%;
+    max-width: 420px;
+    align-self: center;
+    max-height: none;
+  }
+  .gtp-card {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    width: auto;
+    padding: 0 12px 10px;
+  }
+  .gtp-card .gtp-sb,
+  .gtp-card__foot {
+    display: none;
+  }
+  .gtp-card__side {
+    font-size: 26px;
+  }
+  .gtp-msg {
+    margin: 8px 0;
+  }
+  .gtp-nope {
+    top: auto;
+    bottom: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gtp *,
+  .gtp-layer.is-on {
+    animation-duration: 0.01ms !important;
+  }
+  .gtp-reward.is-on,
+  .gtp-nope.is-on {
+    animation: none !important;
+    opacity: 1;
+  }
+}

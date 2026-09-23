@@ -822,16 +822,16 @@
   }
 }
 .gtc-stars.is-flash .gtc-star.is-on {
-  animation: gtc-starflash 0.42s steps(1) infinite;
+  animation: gtc-starflash 0.8s ease-in-out 2 alternate;
 }
 @keyframes gtc-starflash {
   0% {
     fill: #fff;
-    filter: drop-shadow(0 0 7px #ff2b3a);
+    filter: drop-shadow(0 0 5px rgba(255, 43, 58, 0.8));
   }
-  50% {
-    fill: rgba(255, 255, 255, 0.15);
-    filter: drop-shadow(0 0 7px #2b6bff);
+  100% {
+    fill: rgba(255, 255, 255, 0.55);
+    filter: drop-shadow(0 0 5px rgba(43, 107, 255, 0.8));
   }
 }
 
@@ -1578,14 +1578,14 @@
   align-items: flex-start !important;
 }
 .gtc-banner--wanted .gtc-banner__fx {
-  animation: gtc-siren 0.5s steps(1) infinite, gtc-fadein 0.3s ease both;
+  animation: gtc-siren 1.8s ease-in-out infinite alternate, gtc-fadein 0.3s ease both;
 }
 @keyframes gtc-siren {
   0% {
-    box-shadow: inset 0 0 120px 30px rgba(255, 30, 50, 0.55), inset 0 0 0 4px rgba(255, 30, 50, 0.8);
+    box-shadow: inset 0 0 120px 20px rgba(255, 30, 50, 0.22), inset 0 0 0 2px rgba(255, 30, 50, 0.35);
   }
-  50% {
-    box-shadow: inset 0 0 120px 30px rgba(40, 90, 255, 0.55), inset 0 0 0 4px rgba(40, 90, 255, 0.8);
+  100% {
+    box-shadow: inset 0 0 120px 20px rgba(40, 90, 255, 0.22), inset 0 0 0 2px rgba(40, 90, 255, 0.35);
   }
 }
 .gtc-banner--wanted .gtc-banner__band {
@@ -1598,14 +1598,21 @@
   color: #fff;
   -webkit-text-stroke: 2px #000;
   paint-order: stroke fill;
-  animation: gtc-wantedtxt 0.5s steps(1) infinite, gtc-passed 1.9s ease both;
+  animation: gtc-wantedtxt 1.8s ease-in-out infinite alternate, gtc-passed 1.9s ease both;
 }
 @keyframes gtc-wantedtxt {
   0% {
-    text-shadow: 0 0 18px #ff2b3a, 0 3px 0 #000;
+    text-shadow: 0 0 12px rgba(255, 43, 58, 0.7), 0 3px 0 #000;
   }
-  50% {
-    text-shadow: 0 0 18px #2b6bff, 0 3px 0 #000;
+  100% {
+    text-shadow: 0 0 12px rgba(43, 107, 255, 0.7), 0 3px 0 #000;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gtc-banner--wanted .gtc-banner__fx,
+  .gtc-banner--wanted .gtc-banner__text,
+  .gtc-stars.is-flash .gtc-star.is-on {
+    animation: none;
   }
 }
 .gtc-banner__stars {

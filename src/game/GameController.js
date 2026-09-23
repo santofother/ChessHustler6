@@ -44,6 +44,11 @@ const TAUNTS = {
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const other = (c) => (c === 'w' ? 'b' : 'w');
+/** "The Strand Rats" -> "STRAND RATS" style short label for the HUD typing indicator. */
+function shortName(s) {
+  const t = String(s || '').toUpperCase().replace(/^THE\s+/, '').trim();
+  return t.length > 16 ? t.split(/\s+/)[0] : t;
+}
 
 /** Pure economy step (exported for tests). Returns new {cash, wanted}. */
 export function applyEconomy(prev, m, { check, mate }) {
@@ -85,15 +90,42 @@ export class GameController {
     this.lapStart = performance.now();
     this.lastTauntPly = -99;
 
-    world.onSquareClick = (sq) => this.onSquareClick(sq);
-    world.onFx = (name, data) => this.sfx?.fx(name, data);
-    world.onFrame = () => this.tickClock();
-    hud.onAction = (name) => this.onAction(name);
+    this.custom = null; // Hustler match config (startCustom) or null for the normal modes
+    this.onHustler = null; // set by main.js: called when the title menu picks HUSTLER MODE
+
+    this._handlers = {
+      square: (sq) => this.onSquareClick(sq),
+      fx: (name, data) => this.sfx?.fx(name, data),
+      frame: () => this.tickClock(),
+      action: (name) => this.onAction(name),
+    };
+    this.attach();
 
     this.hud.setMuted?.(!!this.sfx?.muted);
 
     this._onKey = (e) => this.onKey(e);
     window.addEventListener('keydown', this._onKey);
+  }
+
+  // ------------------------------------------------------------------ handler ownership
+
+  /** (Re)install this controller's World/Hud handlers (other modes borrow them: Hustler deploy, puzzles). */
+  attach() {
+    this.world.onSquareClick = this._handlers.square;
+    this.world.onFx = this._handlers.fx;
+    this.world.onFrame = this._handlers.frame;
+    this.hud.onAction = this._handlers.action;
+  }
+
+  /** Stop any running game without showing the title (used when another mode takes over the screen). */
+  suspend() {
+    this.gameId++;
+    this.ai?.cancel?.();
+    this.state = 'menu';
+    this.selected = null;
+    this.custom = null;
+    this.hud.setThinking?.(false);
+    this.world.setInputEnabled?.(false);
   }
 
   // ------------------------------------------------------------------ menu / new game
@@ -103,6 +135,11 @@ export class GameController {
     this.ai?.cancel?.();
     this.state = 'menu';
     this.selected = null;
+    this.custom = null;
+    this.attach();
+    this.world.setTeamColors?.('w', null);
+    this.world.setTeamColors?.('b', null);
+    this.hud.setCrews?.(null);
     this.hud.hideAll?.();
     this.hud.setThinking?.(false);
     this.rules.reset();
@@ -117,21 +154,67 @@ export class GameController {
       onStart: (opts) => {
         this.sfx?.resume();
         this.sfx?.play('click');
+        if (opts?.mode === 'hustler' && this.onHustler) {
+          this.suspend();
+          this.onHustler();
+          return;
+        }
         this.newGame(opts);
       },
     });
   }
 
   newGame(opts = this.opts) {
-    this.gameId++;
-    this.ai?.cancel?.();
+    if (this.custom) {
+      // leaving a Hustler match for a normal game: restore the stock look
+      this.world.setTeamColors?.('w', null);
+      this.world.setTeamColors?.('b', null);
+      this.hud.setCrews?.(null);
+    }
+    this.custom = null;
     this.opts = {
       mode: opts?.mode === 'local' ? 'local' : 'ai',
       playerColor: opts?.playerColor === 'b' ? 'b' : 'w',
       level: Math.max(1, Math.min(4, +opts?.level || 2)),
     };
+    this._begin();
+  }
+
+  /**
+   * Start a Hustler match (spec §6). The human always plays white.
+   * cfg = {
+   *   fen,                         // custom start position (validated by the caller; falls back to standard)
+   *   profile,                     // bot profile object for ai.getBestMove (or a level number)
+   *   opponent: { name, crew, lines:{intro,...}, taunts:[] },  // HUD / SMS strings
+   *   player: { name },            // player's crew name for HUD strings
+   *   allowUndo = false,
+   *   onGameEnd({ result:'win'|'loss'|'standoff', winner, reason, captures, survivors, lost, moves }),
+   *   onMenu()                     // phone MENU pressed during the match (caller decides; e.g. confirm + resign)
+   * }
+   */
+  startCustom(cfg = {}) {
+    this.custom = { allowUndo: false, ...cfg };
+    this.opts = { mode: 'ai', playerColor: 'w', level: 2 };
+    this.attach();
+    const opp = cfg.opponent || {};
+    this.hud.setCrews?.({
+      w: cfg.player?.name ? { name: String(cfg.player.name).toUpperCase(), short: shortName(cfg.player.name) } : null,
+      b: opp.crew || opp.name ? { name: String(opp.crew || opp.name).toUpperCase(), short: shortName(opp.name || opp.crew) } : null,
+    });
+    this._begin(cfg.fen);
+  }
+
+  _begin(fen) {
+    this.gameId++;
+    this.ai?.cancel?.();
     this.hud.hideAll?.();
-    this.rules.reset();
+    try {
+      this.rules.reset(fen || undefined);
+    } catch (err) {
+      console.warn('[Game] bad start FEN, using the standard position', fen, err);
+      this.rules.reset();
+    }
+    this.startFen = this.rules.fen();
     this.selected = null;
     this.econ = { cash: { w: 0, b: 0 }, wanted: 0 };
     this.econHistory = [];
@@ -152,11 +235,38 @@ export class GameController {
     this.resetLap();
 
     this.sfx?.startRadio?.();
-    if (this.opts.mode === 'ai') {
+    if (this.custom) {
+      const c = this.custom;
+      const me = String(c.player?.name || CREW.w).toUpperCase();
+      const them = String(c.opponent?.crew || c.opponent?.name || CREW.b).toUpperCase();
+      this.hud.flash(`${me} vs ${them}`, 'info');
+      const intro = c.opponent?.lines?.intro;
+      if (intro) this.smsLater(intro, 1400);
+    } else if (this.opts.mode === 'ai') {
       const ai = other(this.opts.playerColor);
       this.hud.flash(`${CREW[this.opts.playerColor]} vs ${CREW[ai]}`, 'info');
     }
+    const over = this.rules.gameOver();
+    if (over) {
+      // a custom start can already be finished (e.g. bare kings = insufficient material)
+      this.state = 'animating';
+      this.endGame(over);
+      return;
+    }
     this.nextTurn();
+  }
+
+  /** SMS toast from the opponent after a delay (dropped if the game changed/ended meanwhile). */
+  smsLater(text, ms = 700) {
+    const id = this.gameId;
+    const sender = this.custom
+      ? String(this.custom.opponent?.name || this.custom.opponent?.crew || CREW.b).toUpperCase()
+      : CREW[other(this.opts.playerColor)];
+    setTimeout(() => {
+      if (id !== this.gameId || this.state === 'gameover' || this.state === 'menu') return;
+      this.sfx?.play('sms');
+      this.hud.flash(`SMS // ${sender}: ${text}`, 'info');
+    }, ms);
   }
 
   // ------------------------------------------------------------------ turn flow
@@ -183,7 +293,8 @@ export class GameController {
     this.world.setInputEnabled?.(false);
     this.hud.setThinking?.(true);
     const fen = this.rules.fen();
-    const [mv] = await Promise.all([this.ai.getBestMove(fen, this.opts.level), delay(AI_MIN_DELAY)]);
+    const level = this.custom?.profile ?? this.opts.level;
+    const [mv] = await Promise.all([this.ai.getBestMove(fen, level), delay(AI_MIN_DELAY)]);
     if (id !== this.gameId || this.state !== 'ai') return; // stale (rematch/menu/resign while thinking)
     this.hud.setThinking?.(false);
     let move = mv;
@@ -264,12 +375,10 @@ export class GameController {
     }
     if (!pool || Math.random() > chance) return;
     this.lastTauntPly = ply;
-    const text = `SMS // ${CREW[aiColor]}: ${pick(pool)}`;
-    setTimeout(() => {
-      if (this.state === 'gameover' || this.state === 'menu') return;
-      this.sfx?.play('sms');
-      this.hud.flash(text, 'info');
-    }, 700);
+    // Hustler: the leader's own lines take over part of the generic pool
+    const own = this.custom?.opponent?.taunts;
+    const line = own && own.length && m.color === aiColor && Math.random() < 0.6 ? pick(own) : pick(pool);
+    this.smsLater(line, 700);
   }
 
   async endGame(over, { resigned = null } = {}) {
@@ -286,7 +395,7 @@ export class GameController {
     let style;
     if (over.result === 'draw') {
       style = 'busted';
-      text = 'MISSION FAILED';
+      text = this.custom ? 'STANDOFF' : 'MISSION FAILED';
       this.sfx?.play('busted');
     } else if (perspective) {
       const won = over.result === perspective;
@@ -300,12 +409,25 @@ export class GameController {
     }
     if (resigned) this.setWanted(0);
 
+    const custom = this.custom;
+    const summary = custom ? this.matchSummary(over) : null;
+
     try {
       await Promise.race([Promise.resolve(this.hud.flash(text, style)), delay(4500)]);
     } catch {
       /* ignore */
     }
     if (id !== this.gameId) return;
+    if (custom && typeof custom.onGameEnd === 'function') {
+      // Hustler shows its own Results screen instead of the normal game-over card
+      this.state = 'menu';
+      try {
+        custom.onGameEnd(summary);
+      } catch (err) {
+        console.error('[Game] onGameEnd failed', err);
+      }
+      return;
+    }
     this.hud.showGameOver({
       result: over.result,
       reason: over.reason,
@@ -319,6 +441,27 @@ export class GameController {
         this.showMenu();
       },
     });
+  }
+
+  /**
+   * Hustler result payload from the human's (white's) point of view.
+   * captures = enemy pieces the player took; survivors / lost = player's pieces on the final board (by current
+   * type, so a promoted pawn counts as its new piece) / pieces lost; moves = player's moves made.
+   */
+  matchSummary(over) {
+    const me = this.opts.playerColor;
+    const result = over.result === 'draw' ? 'standoff' : over.result === me ? 'win' : 'loss';
+    const empty = () => ({ p: 0, n: 0, b: 0, r: 0, q: 0 });
+    const captures = empty();
+    const lost = empty();
+    let moves = 0;
+    for (const m of this.rules.history()) {
+      if (m.color === me) moves++;
+      if (m.captured && m.captured !== 'k') (m.color === me ? captures : lost)[m.captured]++;
+    }
+    const survivors = empty();
+    for (const row of this.rules.board()) for (const c of row) if (c && c.color === me && c.type !== 'k') survivors[c.type]++;
+    return { result, winner: over.result, reason: over.reason, captures, survivors, lost, moves, fen: this.rules.fen() };
   }
 
   // ------------------------------------------------------------------ input
@@ -398,6 +541,15 @@ export class GameController {
       }
       case 'menu':
         this.sfx?.play('click');
+        if (this.custom && typeof this.custom.onMenu === 'function') {
+          if (this.state === 'gameover' || this.state === 'menu') return; // results are on their way
+          try {
+            this.custom.onMenu();
+          } catch (err) {
+            console.error(err);
+          }
+          return;
+        }
         return this.showMenu();
       default:
         console.warn('[Game] unknown action', name);
@@ -424,7 +576,8 @@ export class GameController {
   }
 
   undo() {
-    if (this.state !== 'human') {
+    if (this.state !== 'human' || (this.custom && !this.custom.allowUndo)) {
+      if (this.custom && this.state === 'human') this.hud.flash('NO TAKEBACKS ON A JOB', 'info');
       this.sfx?.play('illegal');
       return;
     }

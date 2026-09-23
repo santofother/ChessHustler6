@@ -16,6 +16,24 @@ function randomLegal(fen) {
   }
 }
 
+const PROFILE_KEYS = [
+  'label', 'maxDepth', 'timeMs', 'quiescence', 'noiseCp', 'randomChance', 'topN', 'blunderChance', 'captureBias', 'capturePreference',
+];
+
+/** Levels pass through; profiles are reduced to plain known fields (safe to structured-clone to the worker). */
+export function sanitizeLevel(level) {
+  if (level && typeof level === 'object') {
+    const out = {};
+    for (const k of PROFILE_KEYS) {
+      const v = level[k];
+      if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string') out[k] = v;
+    }
+    return out;
+  }
+  const n = Math.round(+level);
+  return n >= 1 && n <= 4 ? n : 2;
+}
+
 export class AI {
   constructor() {
     this.worker = null;
@@ -74,8 +92,13 @@ export class AI {
     }
   }
 
-  /** @returns {Promise<{from,to,promotion}|null>} never rejects */
+  /**
+   * @param {string} fen
+   * @param {number|object} level 1..4, or a Hustler bot profile object (BOT_PROFILES entry, spec §4.3)
+   * @returns {Promise<{from,to,promotion}|null>} never rejects
+   */
   getBestMove(fen, level = 2) {
+    level = sanitizeLevel(level);
     return new Promise((resolve) => {
       if (!this.worker) {
         resolve(randomLegal(fen));

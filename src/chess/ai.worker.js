@@ -1,12 +1,12 @@
 // AI Web Worker. Protocol (PLAN §2):
-//   in:  { id, fen, level }
+//   in:  { id, fen, level }            level = 1..4 or a plain bot-profile object (Hustler, spec §4.3)
 //   out: { id, move:{from,to,promotion}, depth, score, nodes, ms } | { id, error }
-import { search } from './engine.js';
+import { chooseMove } from './engine.js';
 
 self.onmessage = (e) => {
   const { id, fen, level } = e.data || {};
   try {
-    const r = search(fen, level);
+    const r = chooseMove(fen, level);
     if (!r.move) throw new Error('no legal moves');
     self.postMessage({
       id,
@@ -16,6 +16,7 @@ self.onmessage = (e) => {
       nodes: r.nodes,
       ms: r.ms,
       fast: r.fast,
+      kind: r.kind,
     });
   } catch (err) {
     self.postMessage({ id, error: String((err && err.message) || err) });

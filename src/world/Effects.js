@@ -6,6 +6,8 @@ import { sqToXZ, glowTexture, smokeTexture, canvasTexture, formatCash, rng } fro
 
 const CASH = { p: 1000, n: 3000, b: 3000, r: 5000, q: 9000, k: 0 };
 const GRAV = -9.8;
+const SIREN_BURST = 2.2; // seconds the siren plays after the wanted level rises
+const REDUCED_MOTION = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
 
 export class Effects {
   constructor(scene) {
@@ -77,32 +79,40 @@ export class Effects {
   }
 
   setWanted(level) {
-    this.wanted = Math.max(0, Math.min(5, Number(level) || 0));
+    const next = Math.max(0, Math.min(5, Number(level) || 0));
+    // the siren only plays as a short burst when heat rises; the rest of the time the
+    // beacons just glow steadily (the HUD stars carry the persistent wanted level)
+    if (next > this.wanted) this._sirenBurst = SIREN_BURST;
+    this.wanted = next;
   }
 
   _updateSiren(dt, t) {
     // ease the visible level
     this._wantedVis += (this.wanted - this._wantedVis) * Math.min(1, dt * 3);
     const L = this._wantedVis / 5;
-    const speed = 2.2 + this.wanted * 0.9;
-    const a = t * speed;
+    this._sirenBurst = Math.max(0, (this._sirenBurst || 0) - dt);
+    // envelope: quick fade in, hold, gentle fade out over the last second
+    const env = Math.min(1, (SIREN_BURST - this._sirenBurst) / 0.3, this._sirenBurst / 1.0);
+    const reduced = REDUCED_MOTION?.matches;
+    const a = t * 1.3;
     const rad = 4.2;
     this.sirenRed.position.set(Math.cos(a) * rad, 2.4, Math.sin(a) * rad);
     this.sirenBlue.position.set(Math.cos(a + Math.PI) * rad, 2.4, Math.sin(a + Math.PI) * rad);
-    // alternating strobe
-    const strobe = Math.sin(t * (6 + this.wanted * 2)) > 0;
-    const I = 34 * L;
-    this.sirenRed.intensity = I * (strobe ? 1 : 0.25);
-    this.sirenBlue.intensity = I * (strobe ? 0.25 : 1);
+    // smooth red/blue crossfade (~1.2 Hz sine, no hard on/off strobing)
+    const mix = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(t * 7.5);
+    const I = 9 * L * env;
+    this.sirenRed.intensity = I * (0.3 + 0.7 * mix);
+    this.sirenBlue.intensity = I * (0.3 + 0.7 * (1 - mix));
+    // beacons: steady low glow for the current heat, brightening softly during a burst
+    const base = L > 0.02 ? 0.3 + 0.5 * L : 0.15;
     for (const { r, b } of this.beacons) {
-      const on = L > 0.02;
-      r.material.color.setRGB(1, 0.1, 0.18).multiplyScalar(on ? (strobe ? 6 : 0.4) : 0.15);
-      b.material.color.setRGB(0.16, 0.36, 1).multiplyScalar(on ? (strobe ? 0.4 : 6) : 0.15);
+      r.material.color.setRGB(1, 0.1, 0.18).multiplyScalar(base + 1.6 * env * mix);
+      b.material.color.setRGB(0.16, 0.36, 1).multiplyScalar(base + 1.6 * env * (1 - mix));
     }
     this.beamR.userData.pivot.rotation.y = -a;
     this.beamB.userData.pivot.rotation.y = -a + Math.PI;
-    this.beamR.material.opacity = 0.35 * L * (strobe ? 1 : 0.4);
-    this.beamB.material.opacity = 0.35 * L * (strobe ? 0.4 : 1);
+    this.beamR.material.opacity = 0.12 * L * env * (0.4 + 0.6 * mix);
+    this.beamB.material.opacity = 0.12 * L * env * (0.4 + 0.6 * (1 - mix));
   }
 
   // ---------------------------------------------------------------- shake

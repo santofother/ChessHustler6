@@ -467,12 +467,12 @@ export class Hud {
     this._turnShown = true;
     if (!this._title) this.root.classList.add('is-ingame');
     const E = this.el;
-    E.raceTurn.innerHTML = `<i class="gtc-chip gtc-chip--${color}"></i><b>${CREWS[color].name}</b>`;
+    E.raceTurn.innerHTML = `<i class="gtc-chip gtc-chip--${color}"></i><b>${esc(this._crews[color].name)}</b>`;
     E.cash.w.classList.toggle('is-turn', color === 'w');
     E.cash.b.classList.toggle('is-turn', color === 'b');
     this._updateTyping();
     if (changed) {
-      const who = `<span class="gtc-name gtc-name--${color}">${CREWS[color].name}</span>`;
+      const who = `<span class="gtc-name gtc-name--${color}">${esc(this._crews[color].name)}</span>`;
       const line = isPlayerTurn
         ? this._opts.mode === 'ai'
           ? `Your move, ${who}.`
@@ -498,7 +498,7 @@ export class Hud {
   }
   _updateTyping() {
     const E = this.el;
-    E.typingWho.textContent = `${CREWS[this._turn].short} IS PLANNING…`;
+    E.typingWho.textContent = `${this._crews[this._turn].short} IS PLANNING…`;
     E.typing.classList.toggle('is-on', this._thinking);
     E.phoneTab.classList.toggle('is-typing', this._thinking);
     E.race.classList.toggle('is-thinking', this._thinking);
@@ -696,7 +696,7 @@ export class Hud {
       reflow(st);
       st.classList.add('is-flash');
       clearTimeout(this._starT);
-      this._starT = setTimeout(() => st.classList.remove('is-flash'), 3200);
+      this._starT = setTimeout(() => st.classList.remove('is-flash'), 1600);
     }
   }
 
@@ -797,11 +797,12 @@ export class Hud {
       sender = m[1];
       msg = m[2];
     } else if (this._opts.mode === 'ai') {
-      sender = CREWS[this._opts.playerColor === 'w' ? 'b' : 'w'].name;
+      sender = this._crews[this._opts.playerColor === 'w' ? 'b' : 'w'].name;
     } else {
       sender = 'VICE CITY RADIO';
     }
-    const aiColor = /CARTEL/.test(sender) ? 'b' : /VICE/.test(sender) ? 'w' : 'x';
+    const aiColor =
+      sender === this._crews.b.name || /CARTEL/.test(sender) ? 'b' : sender === this._crews.w.name || /VICE/.test(sender) ? 'w' : 'x';
     const card = h('div', `gtc-toast gtc-toast--${aiColor}`, `
       <div class="gtc-toast__av">${pieceSvg(aiColor === 'x' ? 'q' : 'k')}</div>
       <div class="gtc-toast__body"><div class="gtc-toast__top"><b>${esc(sender)}</b><span>now</span></div>
@@ -821,7 +822,7 @@ export class Hud {
         <div class="gtc-modal__dim"></div>
         <div class="gtc-promo gtc-int gtc-promo--${color}" role="dialog" aria-label="Upgrade your ride">
           ${statusBar()}
-          <div class="gtc-promo__head"><span class="gtc-pm__kicker">AUTO SHOP · ${CREWS[color].name}</span><b>UPGRADE YOUR RIDE</b>
+          <div class="gtc-promo__head"><span class="gtc-pm__kicker">AUTO SHOP · ${esc(this._crews[color].name)}</span><b>UPGRADE YOUR RIDE</b>
           <p>Your Street Thug crossed the whole city. Pick the new wheels.</p></div>
           <div class="gtc-promo__grid">
             ${PROMO.map(
