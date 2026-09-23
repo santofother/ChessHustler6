@@ -255,12 +255,13 @@ class Model:
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
         self.add(bm, mat, None, False, group)
 
-    def mesh(self, verts, faces, mat, smooth=False, group=None):
+    def mesh(self, verts, faces, mat, smooth=False, group=None, recalc=True):
         bm = bmesh.new()
         vs = [bm.verts.new(v) for v in verts]
         for f in faces:
             bm.faces.new([vs[i] for i in f])
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        if recalc:
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
         self.add(bm, mat, None, smooth, group)
 
     def strip(self, p, q, t, x0, x1, mat, group=None):
@@ -296,7 +297,7 @@ class Model:
         body = None
         for g, grp in self.groups.items():
             me = bpy.data.meshes.new(g)
-            piv = self.pivots[g]
+            piv = Vector((0, 0, 0)) if g == self.name else self.pivots[g]  # root stays at base centre
             grp["bm"].transform(Matrix.Translation(-piv))
             grp["bm"].normal_update()
             grp["bm"].to_mesh(me)
@@ -423,6 +424,8 @@ def render_preview(objs, name, view=(0.8, 1.0, 0.7), size=512):
 
 
 def finish(model, view=(0.8, 1.0, 0.7)):
+    if os.environ.get("PREVIEW_VIEW"):  # debug override, e.g. PREVIEW_VIEW=1,0,0.2
+        view = tuple(float(v) for v in os.environ["PREVIEW_VIEW"].split(","))
     objs = model.build_objects()
     path = export_glb(objs, model.name)
     tris = tri_count(objs)

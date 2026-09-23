@@ -90,7 +90,7 @@ def figure(m, s=1.0, w=1.0, king=False):
         for sx in (-1, 1):
             m.box((S(0.012), S(0.03), S(0.05)), P(sx * 0.093, 0.01, 0.55, False), "HAIR")
         # gold crown, worn at a jaunty tilt
-        cc = Vector(P(0, -0.015, 0.664, False))
+        cc = Vector(P(0, -0.015, 0.655, False))
         tilt = Euler((math.radians(-10), math.radians(14), 0)).to_matrix()
         m.cyl(S(0.058), S(0.04), cc, "GOLD", r2=S(0.068), verts=10, rot=(-10, 14, 0))
         for k in range(5):
@@ -133,7 +133,7 @@ def figure(m, s=1.0, w=1.0, king=False):
 
     if king:
         # left: fist on hip; right: flashing a fan of cash
-        arm(P(-0.14, 0, 0.405), P(-0.225, -0.035, 0.31), P(-0.13, 0.01, 0.255))
+        arm(P(-0.14, 0, 0.405), P(-0.18, -0.04, 0.315), P(-0.12, 0.005, 0.255))
         hand = Vector(P(0.13, 0.13, 0.27))
         arm(P(0.14, 0, 0.405), P(0.19, 0.035, 0.29), hand, watch="GOLD")
         for k, ang in enumerate((-36, -12, 12, 36)):
