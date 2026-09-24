@@ -124,6 +124,7 @@ export async function demo(el) {
         world.highlight({});
         await sleep(1.2);
       }
+      if (step.cam === 'cinematic') world.react('finale', {});
       if (step.cam) { world.setCameraPreset(step.cam); await sleep(step.wait || 1.7); }
       if (step.m) {
         const mover = pos.get(step.m.from);
@@ -190,6 +191,7 @@ export async function arenaDemo(el) {
     setTimeout(fire, 2000);
     setInterval(fire, 8000);
   }
+  if (q.get('leaktest')) leakTest(world, el, q.get('leaktest'));
   const sw = q.get('switch');
   if (sw) {
     const ids = sw.split(',').filter(Boolean);
@@ -201,6 +203,39 @@ export async function arenaDemo(el) {
     }, 4000);
   }
   return world;
+}
+
+/**
+ * &leaktest=1 (or a comma list of ids): visits every arena once (warms session caches), snapshots
+ * renderer.info.memory / programs on classic, then does 10 round trips and prints before/after on screen.
+ */
+async function leakTest(world, el, arg) {
+  const out = document.createElement('pre');
+  Object.assign(out.style, { position: 'absolute', right: '8px', top: '8px', zIndex: 60, margin: 0, padding: '6px 8px',
+    font: '13px/1.35 monospace', color: '#fff', background: 'rgba(0,0,0,.75)', borderRadius: '4px', pointerEvents: 'none' });
+  el.appendChild(out);
+  const ids = arg === '1' ? ['strand', 'docks', 'neon', 'crown', 'tower', 'trap'] : arg.split(',');
+  const info = world.renderer.info;
+  const snap = () => ({ geo: info.memory.geometries, tex: info.memory.textures, prg: info.programs.length });
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const log = (s) => { out.textContent += s + '\n'; };
+  log('leak test: warming…');
+  for (const id of [...ids, 'classic']) { await world.setArena(id); await wait(300); }
+  await wait(500);
+  const base = snap();
+  log(`baseline (classic) ${JSON.stringify(base)}`);
+  for (let i = 0; i < 10; i++) {
+    const id = ids[i % ids.length];
+    await world.setArena(id); await wait(250);
+    await world.setArena('classic'); await wait(250);
+  }
+  // latest call wins: fire three in a row, only the last should show
+  world.setArena(ids[0]); world.setArena(ids[1 % ids.length]); await world.setArena('classic');
+  await wait(800);
+  const after = snap();
+  log(`after 10 round trips ${JSON.stringify(after)}`);
+  log(`delta geo ${after.geo - base.geo} tex ${after.tex - base.tex} prg ${after.prg - base.prg}  now: ${world.arenaId}`);
+  document.documentElement.dataset.leak = JSON.stringify({ base, after });
 }
 
 /** &lineup=1 (all anims) or &lineup=look (all anims in that look): NPC test row on the board, pieces hidden. */

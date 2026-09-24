@@ -1,0 +1,861 @@
+{
+ "car_tuner": {
+  "name": "car_tuner",
+  "path": "public/models/props/car_tuner.glb",
+  "tris": 1536,
+  "bytes": 90488,
+  "size_xzy": [
+   1.91,
+   4.59,
+   1.23
+  ],
+  "nodes": [
+   "car_tuner",
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "materials": [
+   "CHROME",
+   "EMISSIVE_Headlight",
+   "EMISSIVE_Taillight",
+   "EMISSIVE_Underglow",
+   "GLASS",
+   "TINT_Body",
+   "TINT_Rims",
+   "TINT_Stripe",
+   "TIRE",
+   "TRIM"
+  ]
+ },
+ "speaker_stack": {
+  "name": "speaker_stack",
+  "path": "public/models/props/speaker_stack.glb",
+  "tris": 800,
+  "bytes": 32472,
+  "size_xzy": [
+   0.8,
+   0.64,
+   1.66
+  ],
+  "nodes": [
+   "speaker_stack"
+  ],
+  "materials": [
+   "DARK_STEEL",
+   "EMISSIVE_Ring",
+   "GRILLE",
+   "SPEAKER_CONE",
+   "TINT_Cabinet"
+  ]
+ },
+ "food_cart": {
+  "name": "food_cart",
+  "path": "public/models/props/food_cart.glb",
+  "tris": 784,
+  "bytes": 48412,
+  "size_xzy": [
+   2.27,
+   1.24,
+   2.44
+  ],
+  "nodes": [
+   "food_cart"
+  ],
+  "materials": [
+   "CREAM",
+   "EMISSIVE_Sign",
+   "GLASS",
+   "LEAF_LIGHT",
+   "ORANGE_FLOWER",
+   "RUBBER",
+   "RUST",
+   "STEEL",
+   "TINT_Body",
+   "TINT_Canopy",
+   "TIRE",
+   "WHITE"
+  ]
+ },
+ "lounge_chair": {
+  "name": "lounge_chair",
+  "path": "public/models/props/lounge_chair.glb",
+  "tris": 384,
+  "bytes": 23956,
+  "size_xzy": [
+   0.67,
+   1.9,
+   1.0
+  ],
+  "nodes": [
+   "lounge_chair"
+  ],
+  "materials": [
+   "RUBBER",
+   "TINT_Cushion",
+   "WHITE"
+  ]
+ },
+ "car_muscle": {
+  "name": "car_muscle",
+  "path": "public/models/props/car_muscle.glb",
+  "tris": 1360,
+  "bytes": 81480,
+  "size_xzy": [
+   2.0,
+   5.04,
+   1.38
+  ],
+  "nodes": [
+   "car_muscle",
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "materials": [
+   "CHROME",
+   "EMISSIVE_Headlight",
+   "EMISSIVE_Taillight",
+   "EMISSIVE_Underglow",
+   "GLASS",
+   "TINT_Body",
+   "TINT_Rims",
+   "TINT_Seats",
+   "TINT_Stripe",
+   "TIRE",
+   "TRIM"
+  ]
+ },
+ "car_luxury": {
+  "name": "car_luxury",
+  "path": "public/models/props/car_luxury.glb",
+  "tris": 1300,
+  "bytes": 73956,
+  "size_xzy": [
+   2.07,
+   5.14,
+   1.41
+  ],
+  "nodes": [
+   "car_luxury",
+   "Wheel_FL",
+   "Wheel_FR",
+   "Wheel_RL",
+   "Wheel_RR"
+  ],
+  "materials": [
+   "CHROME",
+   "EMISSIVE_Headlight",
+   "EMISSIVE_Taillight",
+   "EMISSIVE_Underglow",
+   "GLASS",
+   "TINT_Body",
+   "TINT_Rims",
+   "TINT_Stripe",
+   "TIRE"
+  ]
+ },
+ "plant_pot": {
+  "name": "plant_pot",
+  "path": "public/models/props/plant_pot.glb",
+  "tris": 870,
+  "bytes": 24804,
+  "size_xzy": [
+   0.8,
+   0.8,
+   1.91
+  ],
+  "nodes": [
+   "plant_pot"
+  ],
+  "materials": [
+   "LEAF",
+   "LEAF_LIGHT",
+   "ORANGE_FLOWER",
+   "SOIL",
+   "TINT_Pot"
+  ]
+ },
+ "cooler": {
+  "name": "cooler",
+  "path": "public/models/props/cooler.glb",
+  "tris": 124,
+  "bytes": 8924,
+  "size_xzy": [
+   0.66,
+   0.42,
+   0.46
+  ],
+  "nodes": [
+   "cooler"
+  ],
+  "materials": [
+   "TINT_Body",
+   "WHITE"
+  ]
+ },
+ "ferris_wheel": {
+  "name": "ferris_wheel",
+  "path": "public/models/arenas/strand/ferris_wheel.glb",
+  "tris": 3884,
+  "bytes": 212524,
+  "size_xzy": [
+   5.4,
+   21.8,
+   22.5
+  ],
+  "nodes": [
+   "ferris_wheel",
+   "Wheel",
+   "Gondola_00",
+   "Gondola_01",
+   "Gondola_02",
+   "Gondola_03",
+   "Gondola_04",
+   "Gondola_05",
+   "Gondola_06",
+   "Gondola_07",
+   "Gondola_08",
+   "Gondola_09",
+   "Gondola_10",
+   "Gondola_11"
+  ],
+  "materials": [
+   "DARK_STEEL",
+   "EMISSIVE_Bulbs",
+   "TINT_Frame",
+   "TINT_Gondola"
+  ]
+ },
+ "lifeguard_tower": {
+  "name": "lifeguard_tower",
+  "path": "public/models/arenas/strand/lifeguard_tower.glb",
+  "tris": 372,
+  "bytes": 22204,
+  "size_xzy": [
+   2.3,
+   4.33,
+   4.45
+  ],
+  "nodes": [
+   "lifeguard_tower"
+  ],
+  "materials": [
+   "GLASS",
+   "TINT_Hut",
+   "TINT_Trim",
+   "WHITE",
+   "WOOD"
+  ]
+ },
+ "beach_umbrella": {
+  "name": "beach_umbrella",
+  "path": "public/models/arenas/strand/beach_umbrella.glb",
+  "tris": 128,
+  "bytes": 8408,
+  "size_xzy": [
+   2.24,
+   2.24,
+   2.36
+  ],
+  "nodes": [
+   "beach_umbrella"
+  ],
+  "materials": [
+   "TINT_Canopy",
+   "TINT_Canopy2",
+   "WHITE"
+  ]
+ },
+ "surfboard": {
+  "name": "surfboard",
+  "path": "public/models/arenas/strand/surfboard.glb",
+  "tris": 108,
+  "bytes": 6832,
+  "size_xzy": [
+   0.55,
+   2.1,
+   0.18
+  ],
+  "nodes": [
+   "surfboard"
+  ],
+  "materials": [
+   "TINT_Board",
+   "WHITE"
+  ]
+ },
+ "pier_section": {
+  "name": "pier_section",
+  "path": "public/models/arenas/strand/pier_section.glb",
+  "tris": 504,
+  "bytes": 26716,
+  "size_xzy": [
+   5.02,
+   10.0,
+   4.01
+  ],
+  "nodes": [
+   "pier_section"
+  ],
+  "materials": [
+   "TINT_Wood",
+   "WOOD_DARK"
+  ]
+ },
+ "volleyball_net": {
+  "name": "volleyball_net",
+  "path": "public/models/arenas/strand/volleyball_net.glb",
+  "tris": 500,
+  "bytes": 28480,
+  "size_xzy": [
+   9.12,
+   0.12,
+   2.5
+  ],
+  "nodes": [
+   "volleyball_net"
+  ],
+  "materials": [
+   "RUBBER",
+   "WHITE"
+  ]
+ },
+ "gantry_crane": {
+  "name": "gantry_crane",
+  "path": "public/models/arenas/docks/gantry_crane.glb",
+  "tris": 1268,
+  "bytes": 75476,
+  "size_xzy": [
+   15.4,
+   43.23,
+   40.9
+  ],
+  "nodes": [
+   "gantry_crane",
+   "Trolley",
+   "Spreader"
+  ],
+  "materials": [
+   "DARK_STEEL",
+   "EMISSIVE_Warning",
+   "GLASS",
+   "RUBBER",
+   "SPREADER",
+   "TINT_Steel",
+   "WHITE"
+  ]
+ },
+ "container": {
+  "name": "container",
+  "path": "public/models/arenas/docks/container.glb",
+  "tris": 252,
+  "bytes": 14828,
+  "size_xzy": [
+   12.23,
+   2.44,
+   2.59
+  ],
+  "nodes": [
+   "container"
+  ],
+  "materials": [
+   "DARK_STEEL",
+   "STEEL",
+   "TINT_Body"
+  ]
+ },
+ "forklift": {
+  "name": "forklift",
+  "path": "public/models/arenas/docks/forklift.glb",
+  "tris": 648,
+  "bytes": 35640,
+  "size_xzy": [
+   1.26,
+   3.39,
+   2.24
+  ],
+  "nodes": [
+   "forklift",
+   "Forks"
+  ],
+  "materials": [
+   "DARK_STEEL",
+   "ORANGE_FLOWER",
+   "RUBBER",
+   "STEEL",
+   "TINT_Body",
+   "TIRE"
+  ]
+ },
+ "light_mast": {
+  "name": "light_mast",
+  "path": "public/models/arenas/docks/light_mast.glb",
+  "tris": 188,
+  "bytes": 13244,
+  "size_xzy": [
+   1.52,
+   1.52,
+   13.95
+  ],
+  "nodes": [
+   "light_mast"
+  ],
+  "materials": [
+   "CONCRETE",
+   "DARK_STEEL",
+   "EMISSIVE_Lamp",
+   "GALV"
+  ]
+ },
+ "bollard": {
+  "name": "bollard",
+  "path": "public/models/arenas/docks/bollard.glb",
+  "tris": 144,
+  "bytes": 6240,
+  "size_xzy": [
+   0.48,
+   0.54,
+   0.59
+  ],
+  "nodes": [
+   "bollard"
+  ],
+  "materials": [
+   "DARK_STEEL"
+  ]
+ },
+ "tugboat": {
+  "name": "tugboat",
+  "path": "public/models/arenas/docks/tugboat.glb",
+  "tris": 1345,
+  "bytes": 47056,
+  "size_xzy": [
+   4.16,
+   14.44,
+   7.3
+  ],
+  "nodes": [
+   "tugboat"
+  ],
+  "materials": [
+   "BLACK",
+   "DARK_STEEL",
+   "EMISSIVE_Windows",
+   "RUST",
+   "TINT_Hull",
+   "TIRE",
+   "WHITE"
+  ]
+ },
+ "oil_drum_fire": {
+  "name": "oil_drum_fire",
+  "path": "public/models/arenas/docks/oil_drum_fire.glb",
+  "tris": 356,
+  "bytes": 17712,
+  "size_xzy": [
+   0.63,
+   0.6,
+   0.89
+  ],
+  "nodes": [
+   "oil_drum_fire"
+  ],
+  "materials": [
+   "BLACK",
+   "RUST",
+   "TINT_Drum",
+   "WOOD_DARK"
+  ]
+ },
+ "couch": {
+  "name": "couch",
+  "path": "public/models/arenas/trap/couch.glb",
+  "tris": 544,
+  "bytes": 34140,
+  "size_xzy": [
+   2.1,
+   0.9,
+   0.98
+  ],
+  "nodes": [
+   "couch"
+  ],
+  "materials": [
+   "CREAM",
+   "TINT_Fabric",
+   "WOOD_DARK"
+  ]
+ },
+ "fluoro_light": {
+  "name": "fluoro_light",
+  "path": "public/models/arenas/trap/fluoro_light.glb",
+  "tris": 108,
+  "bytes": 7748,
+  "size_xzy": [
+   1.3,
+   0.3,
+   0.1
+  ],
+  "nodes": [
+   "fluoro_light"
+  ],
+  "materials": [
+   "EMISSIVE_Tube",
+   "WHITE"
+  ]
+ },
+ "armchair": {
+  "name": "armchair",
+  "path": "public/models/arenas/trap/armchair.glb",
+  "tris": 312,
+  "bytes": 19876,
+  "size_xzy": [
+   0.9,
+   0.9,
+   0.98
+  ],
+  "nodes": [
+   "armchair"
+  ],
+  "materials": [
+   "TINT_Fabric",
+   "WOOD_DARK"
+  ]
+ },
+ "arcade_cabinet": {
+  "name": "arcade_cabinet",
+  "path": "public/models/arenas/trap/arcade_cabinet.glb",
+  "tris": 264,
+  "bytes": 18752,
+  "size_xzy": [
+   0.75,
+   0.91,
+   1.8
+  ],
+  "nodes": [
+   "arcade_cabinet"
+  ],
+  "materials": [
+   "AMBER",
+   "BLACK",
+   "CHROME",
+   "EMISSIVE_Marquee",
+   "EMISSIVE_Screen",
+   "SIREN_BLUE",
+   "SIREN_RED",
+   "TINT_Cabinet"
+  ]
+ },
+ "pool_table": {
+  "name": "pool_table",
+  "path": "public/models/arenas/trap/pool_table.glb",
+  "tris": 808,
+  "bytes": 44212,
+  "size_xzy": [
+   2.5,
+   1.4,
+   0.85
+  ],
+  "nodes": [
+   "pool_table"
+  ],
+  "materials": [
+   "AMBER",
+   "BLACK",
+   "FELT_POCKET",
+   "GOLD",
+   "LEAF",
+   "SIREN_BLUE",
+   "SIREN_RED",
+   "TINT_Felt",
+   "WHITE",
+   "WOOD",
+   "WOOD_DARK"
+  ]
+ },
+ "mansion": {
+  "name": "mansion",
+  "path": "public/models/arenas/crown/mansion.glb",
+  "tris": 2000,
+  "bytes": 106076,
+  "size_xzy": [
+   24.4,
+   14.65,
+   11.0
+  ],
+  "nodes": [
+   "mansion"
+  ],
+  "materials": [
+   "CREAM",
+   "EMISSIVE_Windows",
+   "GLASS",
+   "SAND_STONE",
+   "TINT_Roof",
+   "TINT_Wall"
+  ]
+ },
+ "topiary": {
+  "name": "topiary",
+  "path": "public/models/arenas/crown/topiary.glb",
+  "tris": 260,
+  "bytes": 13036,
+  "size_xzy": [
+   0.78,
+   0.78,
+   1.8
+  ],
+  "nodes": [
+   "topiary"
+  ],
+  "materials": [
+   "CREAM",
+   "SAND_STONE",
+   "SOIL",
+   "TINT_Leaves",
+   "WOOD_DARK"
+  ]
+ },
+ "fountain": {
+  "name": "fountain",
+  "path": "public/models/arenas/crown/fountain.glb",
+  "tris": 932,
+  "bytes": 34180,
+  "size_xzy": [
+   3.56,
+   3.56,
+   2.65
+  ],
+  "nodes": [
+   "fountain",
+   "Water"
+  ],
+  "materials": [
+   "DARK_STEEL",
+   "TINT_Stone",
+   "WATER"
+  ]
+ },
+ "balustrade": {
+  "name": "balustrade",
+  "path": "public/models/arenas/crown/balustrade.glb",
+  "tris": 800,
+  "bytes": 28576,
+  "size_xzy": [
+   2.0,
+   0.3,
+   1.0
+  ],
+  "nodes": [
+   "balustrade"
+  ],
+  "materials": [
+   "TINT_Stone"
+  ]
+ },
+ "horse_statue": {
+  "name": "horse_statue",
+  "path": "public/models/arenas/crown/horse_statue.glb",
+  "tris": 564,
+  "bytes": 21516,
+  "size_xzy": [
+   1.6,
+   2.75,
+   3.94
+  ],
+  "nodes": [
+   "horse_statue"
+  ],
+  "materials": [
+   "CREAM",
+   "GOLD",
+   "TINT_Gold",
+   "WHITE"
+  ]
+ },
+ "golf_cart": {
+  "name": "golf_cart",
+  "path": "public/models/arenas/crown/golf_cart.glb",
+  "tris": 812,
+  "bytes": 46524,
+  "size_xzy": [
+   1.21,
+   2.43,
+   1.85
+  ],
+  "nodes": [
+   "golf_cart"
+  ],
+  "materials": [
+   "BLACK",
+   "CHROME",
+   "DARK_STEEL",
+   "GLASS",
+   "HEADLIGHT",
+   "SIREN_BLUE",
+   "SIREN_RED",
+   "TINT_Body",
+   "TINT_Roof",
+   "TIRE"
+  ]
+ },
+ "helicopter": {
+  "name": "helicopter",
+  "path": "public/models/arenas/tower/helicopter.glb",
+  "tris": 736,
+  "bytes": 44012,
+  "size_xzy": [
+   8.29,
+   13.35,
+   3.7
+  ],
+  "nodes": [
+   "helicopter",
+   "Rotor",
+   "TailRotor"
+  ],
+  "materials": [
+   "CHROME",
+   "DARK_STEEL",
+   "EMISSIVE_Nav",
+   "EMISSIVE_NavGreen",
+   "GLASS",
+   "TINT_Body",
+   "TINT_Stripe"
+  ]
+ },
+ "hvac_unit": {
+  "name": "hvac_unit",
+  "path": "public/models/arenas/tower/hvac_unit.glb",
+  "tris": 496,
+  "bytes": 24516,
+  "size_xzy": [
+   2.1,
+   2.03,
+   1.36
+  ],
+  "nodes": [
+   "hvac_unit",
+   "Fan"
+  ],
+  "materials": [
+   "BLACK",
+   "DARK_STEEL",
+   "GALV"
+  ]
+ },
+ "antenna_mast": {
+  "name": "antenna_mast",
+  "path": "public/models/arenas/tower/antenna_mast.glb",
+  "tris": 652,
+  "bytes": 34264,
+  "size_xzy": [
+   1.0,
+   1.0,
+   15.04
+  ],
+  "nodes": [
+   "antenna_mast"
+  ],
+  "materials": [
+   "CONCRETE",
+   "EMISSIVE_Beacon",
+   "GALV",
+   "SIREN_RED",
+   "WHITE"
+  ]
+ },
+ "throne_sofa": {
+  "name": "throne_sofa",
+  "path": "public/models/arenas/tower/throne_sofa.glb",
+  "tris": 1046,
+  "bytes": 44772,
+  "size_xzy": [
+   2.43,
+   0.96,
+   1.77
+  ],
+  "nodes": [
+   "throne_sofa"
+  ],
+  "materials": [
+   "RUBY",
+   "TINT_Gold",
+   "TINT_Velvet"
+  ]
+ },
+ "start_tree": {
+  "name": "start_tree",
+  "path": "public/models/arenas/neon/start_tree.glb",
+  "tris": 816,
+  "bytes": 43464,
+  "size_xzy": [
+   0.6,
+   0.6,
+   3.02
+  ],
+  "nodes": [
+   "start_tree"
+  ],
+  "materials": [
+   "BLACK",
+   "DARK_STEEL",
+   "EMISSIVE_Amber",
+   "EMISSIVE_Green",
+   "EMISSIVE_Red",
+   "POLE",
+   "WHITE"
+  ]
+ },
+ "club_front": {
+  "name": "club_front",
+  "path": "public/models/arenas/neon/club_front.glb",
+  "tris": 752,
+  "bytes": 38568,
+  "size_xzy": [
+   10.2,
+   3.74,
+   7.25
+  ],
+  "nodes": [
+   "club_front",
+   "SignBoard"
+  ],
+  "materials": [
+   "BLACK",
+   "CHROME",
+   "CONCRETE",
+   "EMISSIVE_Trim",
+   "GLASS",
+   "GOLD",
+   "TINT_Rope",
+   "TINT_Wall",
+   "WHITE"
+  ]
+ },
+ "traffic_light": {
+  "name": "traffic_light",
+  "path": "public/models/arenas/neon/traffic_light.glb",
+  "tris": 500,
+  "bytes": 27680,
+  "size_xzy": [
+   0.34,
+   3.17,
+   6.0
+  ],
+  "nodes": [
+   "traffic_light"
+  ],
+  "materials": [
+   "BLACK",
+   "CONCRETE",
+   "EMISSIVE_Amber",
+   "EMISSIVE_Green",
+   "EMISSIVE_Red",
+   "GALV"
+  ]
+ }
+}

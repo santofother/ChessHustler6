@@ -43,7 +43,7 @@ const TIMES = {
   },
   night: {
     sky: { zenith: '#03060f', top: '#0a1228', mid: '#14254a', horizon: '#3a3150', bottom: '#07090d', sunColor: '#9fb4ff', sunGlow: 0.25, stars: 0.9 },
-    sun: { color: 0x9fb4ff, intensity: 0.75, dir: [0.35, 0.7, -0.6] }, hemi: [0x3b4f80, 0x1a1410, 0.75],
+    sun: { color: 0x9fb4ff, intensity: 0.75, dir: [0.35, 0.7, -0.6] }, hemi: [0x4a6090, 0x1f1812, 1.0],
     fog: { color: '#0d1626', near: 34, far: 160 }, background: '#070c18', exposure: 1.12,
     lamp: 1.7, lampPools: 1.25, canal: 1.45, water: '#041a1e', windows: 1.35, bloom: { strength: 0.8, radius: 0.55, threshold: 0.82 },
     env: 0.55, fire: 1.3, lampsOn: true,
@@ -171,7 +171,7 @@ export default class DocksArena extends Arena {
     rough.repeat.set(0.37, 0.37);
     const wet = this.T === TIMES.day ? 0.75 : 1.0;
     const mat = new THREE.MeshStandardMaterial({
-      map, roughnessMap: rough, roughness: 0.62 * wet + 0.1, metalness: 0.05, color: '#b9bcc2', envMapIntensity: 1.2,
+      map, roughnessMap: rough, roughness: 0.75 * wet + 0.15, metalness: 0.05, color: '#b9bcc2', envMapIntensity: 1.2,
     });
     const ground = new THREE.Mesh(geo, mat);
     ground.receiveShadow = true; ground.name = 'docks_ground';
@@ -775,7 +775,7 @@ export default class DocksArena extends Arena {
     const sod = new THREE.Color('#ffa24a');
     this.lamps = [];
     if (T.lamp > 0) {
-      for (const [x, y, z] of [[7.8, 8.5, -8.0], [-7.4, 8.5, 9.0]]) {
+      for (const [x, y, z] of [[8.8, 10, -9.5], [-9.5, 10, 10.5]]) {
         const l = new THREE.PointLight(sod, 55 * T.lamp, 34, 1.6);
         l.position.set(x, Y + y, z);
         this.group.add(l); this.lamps.push(l);

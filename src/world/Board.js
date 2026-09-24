@@ -67,12 +67,12 @@ export class Board {
       envMapIntensity: 1.5,
     }));
     const sideMat = new THREE.MeshStandardMaterial({ color: 0x3a3440, roughness: 0.9 });
-    const geo = new THREE.BoxGeometry(0.985, 0.12, 0.985);
+    const geo = twoGroupBox(0.985, 0.12, 0.985); // [sides+bottom, top] → 2 draw calls per tile instead of 6
     geo.translate(0, -0.06, 0);
     for (const sq of ALL_SQUARES) {
       const light = isLightSquare(sq);
       const top = light ? lightMats[Math.floor(r() * 4)] : darkMats[Math.floor(r() * 4)];
-      const mats = [sideMat, sideMat, top, sideMat, sideMat, sideMat];
+      const mats = [sideMat, top];
       const m = new THREE.Mesh(geo, mats);
       const { x, z } = sqToXZ(sq);
       m.position.set(x, BOARD_TOP, z);
@@ -348,6 +348,19 @@ export class Board {
     this._hlMats.check.opacity = pulse;
     this._hlMats.selected.opacity = 0.85 + 0.15 * Math.sin(t * 3);
   }
+}
+
+/** BoxGeometry re-indexed into two groups: 0 = all sides + bottom, 1 = top (+Y). */
+function twoGroupBox(w, h, d) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const idx = g.index.array;
+  const side = [], top = [];
+  for (const gr of g.groups) for (let i = gr.start; i < gr.start + gr.count; i++) (gr.materialIndex === 2 ? top : side).push(idx[i]);
+  g.setIndex([...side, ...top]);
+  g.clearGroups();
+  g.addGroup(0, side.length, 0);
+  g.addGroup(side.length, top.length, 1);
+  return g;
 }
 
 // ======================================================================== textures

@@ -466,6 +466,7 @@ export class GameController {
   async endGame(over, { resigned = null } = {}) {
     const id = this.gameId;
     this.state = 'gameover';
+    this.world.react?.('finale', over || {}); // crowd celebrates (arena NpcCrowd)
     this.selected = null;
     this.ai?.cancel?.();
     this.hud.setThinking?.(false);

@@ -407,6 +407,9 @@ export default class NeonArena extends Arena {
       walk([[-6.35, 4.6], [-6.35, -4.6], [-A, -5.3], [-A, 4.9]], 'street', 1.0),
       walk([[-A, -33.4], [A, -33.4]], 'club', 1.1, { loop: false }),
       walk([[A, -C], [0.2, -16.9], [0.2, -32.4], [-A, -32.6], [-A, -C]], 'street', 1.2),
+      // fans strolling the aisles on the white side (seen from the black camera)
+      walk([[A, 1.5], [A, 15.8]], 'racer', 1.05, { loop: false }),
+      walk([[-A, 15.8], [-A, 1.5]], 'club', 1.15, { loop: false }),
       // hanging out on the second pair
       { at: [-8.3, -6.8], y: Y + 0.37, face: [-8.3, 0], anim: 'sit', look: 'club' },
       { at: [6.95, -8.6], face: [0, -8], anim: 'lean', look: 'street', prop: 'drink' },

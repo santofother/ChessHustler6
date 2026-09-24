@@ -98,6 +98,12 @@ export class NpcCrowd {
   spawn(list = []) {
     const out = [];
     for (const spec of list || []) {
+      if (this.npcs.length >= this.max && (spec?.priority || spec?.path)) {
+        // walkers / priority extras (e.g. boss-variant NPCs) replace the most recent generic standing NPC
+        let k = this.npcs.length - 1;
+        while (k >= 0 && (this.npcs[k].walker || this.npcs[k].spec.priority)) k--;
+        if (k >= 0) this.remove(this.npcs[k]);
+      }
       if (this.npcs.length >= this.max) {
         if (!this._warned) { this._warned = true; console.info(`[npc] crowd capped at ${this.max} (quality ${this.quality})`); }
         break;
@@ -279,7 +285,7 @@ export class NpcCrowd {
 
     const walker = Array.isArray(spec.path) && spec.path.length >= 2;
     const [x, z] = spec.at || (walker ? spec.path[0] : [0, 0]);
-    const y = spec.y ?? STREET_Y;
+    const y = spec.y ?? (walker && spec.path[0].length > 2 ? spec.path[0][2] : STREET_Y);
     root.position.set(x, y, z);
     let yaw = 0;
     const f = spec.face ?? 'board';
@@ -554,8 +560,18 @@ export class NpcCrowd {
     // separation also nudges standing walkers apart so bodies never interpenetrate
     if (n.state !== 'walk' && (sx || sz)) { pos.x += sx * 0.25 * dt; pos.z += sz * 0.25 * dt; }
     n.root.rotation.y = n.yaw;
-    if (this.groundAt) {
-      const gy = this.groundAt(pos.x, pos.z);
+    // ground height: per-NPC spec.ground(x,z) → crowd.groundAt(x,z) → waypoint y ([x, z, y] paths)
+    const gfn = n.spec.ground || this.groundAt;
+    let gy0 = gfn ? gfn(pos.x, pos.z) : undefined;
+    if (!Number.isFinite(gy0) && pts[n.target].length > 2) {
+      const prev = pts[(n.target - (n.loop ? 1 : n.dirStep) + pts.length) % pts.length];
+      const cur = pts[n.target];
+      const seg = Math.hypot(cur[0] - prev[0], cur[1] - prev[1]) || 1;
+      const k = Math.max(0, Math.min(1, 1 - Math.hypot(cur[0] - pos.x, cur[1] - pos.z) / seg));
+      gy0 = (prev[2] ?? n.y) + ((cur[2] ?? n.y) - (prev[2] ?? n.y)) * k;
+    }
+    if (Number.isFinite(gy0)) {
+      const gy = gy0;
       if (Number.isFinite(gy)) { n.y = gy; pos.y += (gy - pos.y) * Math.min(1, dt * 10); }
     }
     // ---- animation: walk clip speed follows ground speed; activity once (nearly) stopped
@@ -698,7 +714,11 @@ function resample(pts, spacing, closed) {
     const a = pts[i], b = pts[(i + 1) % n];
     const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
     const k = Math.max(1, Math.round(len / spacing));
-    for (let j = 0; j < k; j++) out.push([a[0] + ((b[0] - a[0]) * j) / k, a[1] + ((b[1] - a[1]) * j) / k]);
+    for (let j = 0; j < k; j++) {
+      const q = [a[0] + ((b[0] - a[0]) * j) / k, a[1] + ((b[1] - a[1]) * j) / k];
+      if (a[2] != null || b[2] != null) q.push((a[2] ?? b[2]) + (((b[2] ?? a[2]) - (a[2] ?? b[2])) * j) / k);
+      out.push(q);
+    }
   }
   if (!closed) out.push(pts[n - 1].slice());
   return out;
@@ -713,6 +733,6 @@ function offsetPath(pts, off, closed) {
     let tx = b[0] - a[0], tz = b[1] - a[1];
     const l = Math.hypot(tx, tz) || 1;
     tx /= l; tz /= l;
-    return [p[0] + tz * off, p[1] - tx * off];
+    return p.length > 2 ? [p[0] + tz * off, p[1] - tx * off, p[2]] : [p[0] + tz * off, p[1] - tx * off];
   });
 }

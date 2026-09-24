@@ -461,6 +461,8 @@ geo ${i.memory.geometries} tex ${i.memory.textures} prg ${i.programs?.length ?? 
   }
 
   _emitFx(name, data) {
+    // every capture explosion (Pieces capture animations and playCaptureFx) makes the crowd react — once
+    if (name === 'explosion') this.react('capture', { square: data?.square, victim: data ? { type: data.type, color: data.color } : null });
     if (this.onFx) { try { this.onFx(name, data || {}); } catch (e) { console.error(e); } }
   }
 
@@ -526,8 +528,7 @@ geo ${i.memory.geometries} tex ${i.memory.textures} prg ${i.programs?.length ?? 
   playCaptureFx(square, victim = null) {
     try {
       this.effects.playCaptureFx(square, victim);
-      this._emitFx('explosion', { square, ...(victim || {}) });
-      this.react('capture', { square, victim });
+      this._emitFx('explosion', { square, ...(victim || {}) }); // → react('capture')
     } catch (e) { console.error(e); }
   }
 
@@ -536,7 +537,6 @@ geo ${i.memory.geometries} tex ${i.memory.textures} prg ${i.programs?.length ?? 
     if (name === 'white') this._side = 'w';
     if (name === 'black') this._side = 'b';
     this._userMoved = false;
-    if (name === 'cinematic' && this.ready) this.react('finale', {});
     if (!this.camera) { this._preset = name; return; }
     this._applyPreset(name, animate);
   }

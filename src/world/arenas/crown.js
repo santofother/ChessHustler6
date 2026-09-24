@@ -45,7 +45,7 @@ const TIMES = {
     sky: { zenith: '#050822', top: '#0d1640', mid: '#1c2860', horizon: '#3c3a70', bottom: '#0a0b1e', sunDir: [0.45, 0.32, 0.8], sunColor: '#c8d4ff', sunGlow: 0.35, stars: 0.9 },
     hemi: ['#5563b0', '#241c30', 0.75], sun: { color: '#b4c4ff', intensity: 0.85, dir: [0.35, 0.75, -0.55] },
     fog: { color: '#1c2150', near: 55, far: 320 }, exposure: 1.0, bloom: { strength: 0.55, radius: 0.5, threshold: 0.9 },
-    env: 0.45, win: 1.2, globe: 2.0, pool: 0.6, poolLight: 22, sky2: '#34407a', water: '#141c44', stars: 0.9, beams: 0.3,
+    env: 0.45, win: 1.2, globe: 2.0, pool: 0.6, poolLight: 22, sky2: '#34407a', water: '#141c44', stars: 0.9, beams: 0.2,
     skylineLit: 0.55, lantern: 2.2, fill: 4,
   },
 };
@@ -628,7 +628,7 @@ export default class CrownArena extends Arena {
     for (let i = 0; i < 9; i++) {
       const a = Math.PI * (0.62 + i * 0.09);
       const x = Math.cos(a) * 190, z = -Math.abs(Math.sin(a)) * 170 - 20;
-      const y = YL + 16 + r() * 8;
+      const y = YL + 2.5 + r() * 1.5;
       B.box('stucco', 12, 5, 7, x, y, z, a);
       B.put('roof', new THREE.ConeGeometry(7, 2.5, 4).rotateY(Math.PI / 4), x, y + 3.7, z, a, 1, 1, 0.7);
       B.box('winPlain', 9, 1.1, 7.2, x, y + 0.4, z, a);

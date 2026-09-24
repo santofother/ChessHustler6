@@ -51,18 +51,18 @@ export default class TowerArena extends Arena {
       background: '#050920',
       fog: { color: '#1c1b4c', near: 80, far: 700 },
       exposure: 1.02,
-      bloom: { strength: 0.72, radius: 0.5, threshold: 0.86 },
-      envIntensity: 0.7,
+      bloom: { strength: 0.6, radius: 0.45, threshold: 0.95 },
+      envIntensity: 0.55,
     };
     this.boardStyle = {
       frame: '#11131c', frameText: '#f0c75a',
       plinth: '#161a26', plinthMap: 'marble',
       kerb: 'gold', kerbColors: ['#e8b923', '#11131c'],
-      neon: ['#ffc24a', '#b8ff3c'], neonIntensity: 2.6,
+      neon: ['#ffc24a', '#b8ff3c'], neonIntensity: 1.7,
     };
     this.addHemi(0x5f72c8, 0x2a1d2c, 1.05);
     // key light: the helipad floods (cool-white, from above/front) — the one shadow caster
-    this.addSun({ color: 0xe6ecff, intensity: 2.6, dir: [0.3, 1, 0.5], shadow: true });
+    this.addSun({ color: 0xe6ecff, intensity: 2.6, dir: [0.75, 1, 0.08], shadow: true });
     // soft warm fills: fire lounge (-x) and the boss's gold lounge (+x, -z)
     this.fireLight = this.addLight(new THREE.PointLight(0xff9a4a, 14, 14, 2));
     this.fireLight.position.set(-10.5, 1.4, -0.5);
@@ -73,10 +73,10 @@ export default class TowerArena extends Arena {
     rim.position.set(-6, 5, -12);
     this.addLight(rim);
     this.buildEnvMap([
-      { color: '#ffc24a', pos: [0, 6, -40], size: [40, 6], mult: 3 },
+      { color: '#ffc24a', pos: [0, 6, -40], size: [30, 4], mult: 0.9 },
       { color: '#3ff0ff', pos: [40, 3, 10], size: [30, 10], mult: 2 },
       { color: '#ff5fb0', pos: [-40, 3, 20], size: [30, 10], mult: 2 },
-      { color: '#ffd9a0', pos: [0, 30, 0], size: [20, 20], mult: 1.5 },
+      { color: '#ffd9a0', pos: [0, 30, 0], size: [16, 16], mult: 0.8 },
     ]);
 
     // ---------------------------------------------------------------- city below
@@ -216,7 +216,7 @@ export default class TowerArena extends Arena {
       const t = this.prop(gThrone, { height: 2.2 });
       this.tint(t, { TINT_Velvet: '#231a52', TINT_Gold: '#d9a93a' });
       t.position.set(throne.x, Y, throne.z); t.rotation.y = throneYaw;
-      this.group.add(t);
+      t.userData.mergeStatic = true; this.group.add(t);
     } else {
       P.throneSofa(batch, mats, M(throne.x, Y, throne.z, { ry: throneYaw }));
     }
@@ -233,7 +233,7 @@ export default class TowerArena extends Arena {
       if (gLounge) {
         const l = this.prop(gLounge.clone(), {});
         l.position.set(x, Y, z); l.rotation.y = yaw + Math.PI;
-        this.group.add(l);
+        l.userData.mergeStatic = true; this.group.add(l);
       } else {
         P.lounger(batch, mats, M(x, Y, z, { ry: yaw }));
       }
@@ -256,7 +256,7 @@ export default class TowerArena extends Arena {
       if (gSpeaker) {
         const s = this.prop(gSpeaker.clone(), { height: 2.2 });
         s.position.set(x, Y, z); s.rotation.y = yaw;
-        this.group.add(s);
+        s.userData.mergeStatic = true; this.group.add(s);
       } else {
         P.speakerStack(batch, mats, M(x, Y, z, { ry: yaw }));
       }
@@ -271,7 +271,7 @@ export default class TowerArena extends Arena {
       if (gPot) {
         const p = this.prop(gPot.clone(), { height: 1.0 });
         p.position.set(x, Y, z);
-        this.group.add(p);
+        p.userData.mergeStatic = true; this.group.add(p);
       } else {
         P.planter(batch, mats, M(x, Y, z), { r: 0.48, h: 0.72 });
         if (palmTmpl) {
@@ -322,6 +322,7 @@ export default class TowerArena extends Arena {
 
     // build all static props (one draw call per material)
     batch.build(this.group);
+    this._mergeStaticGlbs();
 
     // ---------------------------------------------------------------- gold confetti for the finale (hidden until then)
     this._confetti();
@@ -420,6 +421,32 @@ export default class TowerArena extends Arena {
     g.position.set(0, Y, z);
     g.rotation.y = yaw;
     this.group.add(g);
+  }
+
+  /** Merges static GLB props (flagged userData.mergeStatic) into one mesh per material + attribute layout. */
+  _mergeStaticGlbs() {
+    const groups = new Map();
+    const holders = this.group.children.filter((o) => o.userData.mergeStatic);
+    for (const h of holders) {
+      h.updateMatrixWorld(true);
+      h.traverse((o) => {
+        if (!o.isMesh || o.isSkinnedMesh || Array.isArray(o.material) || o.morphTargetInfluences) return;
+        const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+        g.applyMatrix4(o.matrixWorld);
+        const key = o.material.uuid + '|' + Object.keys(g.attributes).sort().join(',');
+        if (!groups.has(key)) groups.set(key, { mat: o.material, list: [] });
+        groups.get(key).list.push(g);
+      });
+      h.removeFromParent();
+    }
+    for (const { mat, list } of groups.values()) {
+      const merged = mergeGeometries(list, false);
+      list.forEach((g) => g.dispose());
+      if (!merged) continue;
+      const m = new THREE.Mesh(merged, mat);
+      m.name = 'glb_props'; m.castShadow = true; m.receiveShadow = true;
+      this.group.add(m);
+    }
   }
 
   _flame(anchor) {

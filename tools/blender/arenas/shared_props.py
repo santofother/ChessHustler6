@@ -41,9 +41,8 @@ def car_tuner():
     # greenhouse + roof
     m.prism([(-0.82, 0.82), (-0.05, 1.19), (0.95, 1.19), (1.7, 0.86)], -0.72, 0.72, "GLASS")
     m.prism([(-0.02, 1.18), (0.97, 1.18), (0.93, 1.24), (0.05, 1.24)], -0.68, 0.68, "TINT_Body")
-    for sx in (-1, 1):  # A/B pillars
-        m.box((0.05, 0.08, 0.44), (sx * 0.69, -0.44, 1.0), "TINT_Body", rot=(-62, 0, 0))
-        m.box((0.05, 0.09, 0.36), (sx * 0.72, 0.5, 1.02), "TINT_Body")
+    for sx in (-1, 1):  # B pillars
+        m.box((0.04, 0.09, 0.34), (sx * 0.715, 0.5, 1.02), "TINT_Body")
     # wide-body fender flares
     for sx in (-1, 1):
         for sy in (-1, 1):

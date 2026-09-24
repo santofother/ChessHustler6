@@ -65,6 +65,7 @@ def begin(extra=None):
 
 def reparent(child, parent):
     """Keep world transform, parent child under parent (both built by Model.build_objects)."""
+    bpy.context.view_layer.update()
     mw = child.matrix_world.copy()
     child.parent = parent
     child.matrix_parent_inverse = parent.matrix_world.inverted()
