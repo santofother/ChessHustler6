@@ -134,7 +134,7 @@ export default class CrownArena extends Arena {
     // fountain (between the board and the mansion steps)
     if (gFountain) {
       const f = this.prop(gFountain, { height: 3.4 });
-      B.addObject(f, Batch.mat(0, Y0, -20, 0, 0, 0, 1.35), glbMat({ TINT_Stone: 'marble', WATER: 'fwater' }));
+      B.addObject(f, Batch.mat(0, Y0, -20, 0, 0, 0, 1.35), glbMat({ TINT_Stone: 'marble', WATER: 'fall' }));
     } else fountain(B, 0, -20, Y0, 2.6);
     // parterres flanking the fountain
     for (const sx of [-1, 1]) {
@@ -372,7 +372,7 @@ export default class CrownArena extends Arena {
       water: S(T.water, { roughness: 0.18, metalness: 0.1, envMapIntensity: 1.2 }),
       pool: poolMaterial(t, { sky: T.sky2, glow: T.pool, edge: [16, 14] }),
       fwater: poolMaterial(t, { deep: '#2aa8c0', shallow: '#8ff0ee', sky: T.sky2, glow: T.pool + 0.1, scale: 1.1, edge: [3, 3], speed: 0.9 }),
-      fall: fallMaterial(t, { opacity: 0.5 }),
+      fall: fallMaterial(t, { opacity: 0.6, color: '#bff4ff' }),
       beam: new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd49a').multiplyScalar(T.beams), map: beamTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: true }),
       tree: S('#2d4a32', { roughness: 1, flatShading: true }),
       hill: S('#56685e', { roughness: 1 }),

@@ -214,7 +214,7 @@ export class Board {
     const len = outer * 2;
     let mat;
     if (kind === 'gold') {
-      mat = new THREE.MeshStandardMaterial({ color: colors[0], metalness: 0.9, roughness: 0.28 });
+      mat = new THREE.MeshStandardMaterial({ color: colors[0], metalness: 0.85, roughness: 0.45 });
     } else {
       const tex = kind === 'hazard' ? hazardTexture(colors) : planksTexture(colors);
       tex.wrapS = THREE.RepeatWrapping;

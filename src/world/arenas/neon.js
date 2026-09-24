@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { Arena, STREET_Y } from './Arena.js';
 import { rng } from '../util.js';
 import { CarFleet } from './neon/car.js';
-import { L, buildGround, buildMarkings, buildStrip, buildSkyline } from './neon/city.js';
+import { L, neonTextTex, buildGround, buildMarkings, buildStrip, buildSkyline } from './neon/city.js';
 import {
   buildFestoons, buildPalms, buildLamps, speakerObject, startTreeObject, trafficLightObject, foodCartObject,
   buildCones, buildRopes, Confetti,
@@ -298,6 +298,12 @@ export default class NeonArena extends Arena {
       h.position.set(0, STREET_Y + L.kerbH, z - 0.4);
       h.rotation.y = Math.PI;
       this.group.add(h);
+      // blank sign board → gang neon text
+      const sb = h.getObjectByName('SignBoard');
+      if (sb) {
+        const tex = this.track(neonTextTex(boss ? 'VELVET SYNDICATE' : 'VELVET', GANG.purple, { outline: GANG.yellow, italic: true, bg: '#14061f' }));
+        sb.traverse((o) => { if (o.isMesh) o.material = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.4, 1.4, 1.4) }); });
+      }
     } else {
       // entrance: glowing doors under a purple canopy with gold trim
       const door = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.6), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff7ac8').multiplyScalar(1.1) }));

@@ -296,3 +296,54 @@ standing crowds. Requirements for every arena:
 - Arena workers (B–F): add walker paths suited to your space (beachgoers strolling the boardwalk, dock workers
   walking between containers, race fans crossing the street at the Neon Mile meet, party guests drifting around the
   pool, security guards patrolling the rooftop).
+
+### Changes (worker A — backbone; all additive, existing API unchanged)
+- **World**: `?fps=1` meter (fps, draw calls, tris, geo/tex/programs, NPC count). Pixel ratio ≤ 2 (≤ 1.5 on quality
+  low). Capture reactions now fire from the Pieces explosion fx path (`World._emitFx('explosion')` →
+  `react('capture', {square, victim})`), once per capture, including `playCaptureFx`. **`'finale'` is no longer a side
+  effect of `setCameraPreset('cinematic')`**: `GameController.endGame` calls `world.react('finale', over)`.
+- **ArenaManager**: awaits the shared NPC assets before `build()`. Latest call wins, and superseded or failed builds are
+  disposed (crowd first). A failing arena falls back to classic. At most one shadow-casting light per arena (extras are
+  switched off with a warning). `compileAsync` runs after the swap, with a soft 420 ms fade. `ctx.url` is now set.
+  `arenaManager.loading`. `guessQuality()` exported (`?quality=low|high`).
+- **Board.setSurround(style)** implemented: `frame`, `frameText` (auto-contrast when omitted), `frameLine`, `plinth`,
+  `plinthMap` concrete|wood|marble|steel|none, `kerb` race|none|rope|gold|hazard|planks, `kerbColors`, `neon` (1–2
+  colours or null), `neonIntensity`. It can be called before `build()` and repeatedly, and the old surround is
+  disposed each time. The gold kerb uses roughness 0.45. `SURROUND_DEFAULT` is exported.
+- **NpcCrowd** (real GLBs from `public/models/npc/`, procedural fallback with the same bone names; `?npc=procedural`
+  forces the fallback):
+  - Each NPC is one skinned mesh with one shared vertex-colour material, plus one `AnimationMixer`.
+  - Per-NPC colours come from `look` palettes: TOP/BOTTOM/SKIN/HAIR/ACCENT, plus sleeve and trouser length.
+  - Mixers update at 1/2/3/4-frame rates depending on distance and frustum.
+  - All NPCs get instanced blob shadows. Up to 8 cast real shadows, and only if their shadow can't reach the board.
+  - Clip mapping and extra anims: `idle talk phone cheer clap dance lean sit walk wave_flag drink point` plus `dance2
+    sit_ground crossed`. A missing clip falls back to Idle.
+  - The walk clip speed is calibrated from the foot stride: GLB 1.257 m/s, the Blender note says 1.25.
+- **Walkers — spec "WALKING AROUND THE BOARD"**:
+  - `crowd.walkers({ loop|path:[[x,z(,y)],…], count=6, look|looks, speed=[1.0,1.4], reverse=0.5, spread=0.35,
+    stops=0.3, pauses=['point','phone','talk','wave_flag','idle'], pauseTime=[2,6], spacing=2.2, closed=true, y, … })`.
+    Walkers wander: they pause 2–6 s to point, phone, talk to the nearest standing NPC, wave or watch, then carry on.
+    Starts and stops ease in and out, turning is smooth, and the walk clip time scale follows ground speed (no foot
+    slide). They keep apart from other NPCs and obstacles, never enter the board zone, and slow down behind someone.
+  - `crowd.orbit({ halfW=6.8, halfL=13, corner=1.6, … })` walks a loop all the way around the board, crossing behind
+    the cameras.
+  - **If an arena declares no walkers, `finalize()` adds a default orbit** (8 walkers, 4 on quality low). Opt out with
+    `this.autoWalkers = false`, or tune it with `this.walkerOrbit = {halfW, halfL, …}`, `this.walkerLook`, `this.walkerY`.
+  - `crowd.addObstacle(x,z,r)` / `addObstacles([[x,z,r],…])` register props walkers should steer around.
+  - Ground height, first match wins: per-NPC `spec.ground(x,z)`, then `crowd.groundAt = (x,z) => y`, then the
+    waypoint y in `[x,z,y]` paths.
+  - Reactions: on a capture, walkers within 11 m stop, turn to the square and point or cheer. On the finale, everyone
+    stops, faces the board and cheers or claps for about 6 s.
+  - Also added: `crowd.setAnim(npc, name, {fade, duration})`, `crowd.remove(npc)`, `crowd.backend` ('glb' |
+    'procedural'), `crowd.count`, `crowd.walkerCount`.
+  - Cap: 40 NPCs, 20 on quality low. When the crowd is full, a walker or a spec with `priority: true` replaces the
+    most recent generic standing NPC.
+- **kit.js** exports: `softPulse, breathe, normalizeProp, propLength, glowTexture, neonTextTexture, viTexture,
+  bannerTexture, windowTexture, sunsetSky, addPalms, addStreetLights, buildSkyline, neonSign, festoon, waterPlane`
+  (+ re-exports `canvasTexture, speckle, rng, STREET_Y, mergeGeometries`). All animated lights are slow soft pulses.
+- **classic.js** now builds the old Environment directly on kit.js; `Environment.js` is a legacy re-export. Antenna
+  beacons and neon signs breathe slowly (3.2–5 s, ≤ 30 %) instead of blinking. The crowd: 25 race fans between the
+  barrier and the fence (a flag waver at the start line), 8 sidewalk walkers crossing at zebra crossings z=±17.5, and
+  a few sidewalk groups.
+- **Viewer extras**: `?demo=arena&lineup=1` (every anim on the board, pieces hidden), `&leaktest=1` (prints
+  renderer.info before and after 10 arena round trips; needs a visible tab), `&npc=procedural`.
