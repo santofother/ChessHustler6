@@ -96,7 +96,8 @@ export async function demo(el) {
   const world = new World(el);
   const caption = makeCaption(el);
   caption.textContent = 'LOADING…';
-  await world.init({ onProgress: (p) => { caption.textContent = `LOADING ${Math.round(p * 100)}%`; } });
+  const q = new URLSearchParams(location.search);
+  await world.init({ onProgress: (p) => { caption.textContent = `LOADING ${Math.round(p * 100)}%`; }, arena: q.get('arena') || undefined, variant: variantFromQuery(q) });
   window.__world = world; // debug handle
   world.onSquareClick = (sq) => console.log('[demo] click', sq);
   world.onFx = (name, data) => console.log('[demo] fx', name, data);
@@ -150,6 +151,78 @@ export async function demo(el) {
     }
     await sleep(1);
   }
+}
+
+/** ?time=day|dusk|night&boss=1&street=2 (or &variant=boss) → arena variant object. */
+export function variantFromQuery(q) {
+  const variant = {};
+  if (q.get('time')) variant.time = q.get('time');
+  if (q.get('boss') || q.get('variant') === 'boss') variant.boss = true;
+  if (q.get('street')) variant.street = Number(q.get('street')) || 1;
+  return variant;
+}
+
+/**
+ * Static arena viewer (?demo=arena&arena=<id>&cam=white|black|top|cinematic[&time=..&boss=1][&react=capture|finale])
+ * World only (no HUD/title), pieces in the start position, camera preset applied without animation.
+ * &react=… fires world.react(…) after ~2 s (and again every 8 s) to test crowd reactions.
+ * &switch=a,b,c cycles those arenas every 4 s (leak / fade testing). Exposes window.__world.
+ */
+export async function arenaDemo(el) {
+  el = el || document.getElementById('app') || document.body;
+  const q = new URLSearchParams(location.search);
+  const world = new World(el);
+  window.__world = world;
+  await world.init({ arena: q.get('arena') || undefined, variant: variantFromQuery(q) });
+  world.setPosition(new MiniPos(START).board());
+  world.setInputEnabled(false);
+  const cam = q.get('cam') || 'white';
+  const applyCam = () => {
+    world.setCameraPreset(cam, { animate: false });
+    if (cam === 'cinematic' && !q.get('orbit')) world.controls.autoRotate = false; // stable screenshots
+  };
+  applyCam();
+  if (q.get('lineup')) npcLineup(world, q.get('lineup'));
+  document.documentElement.dataset.arenaReady = world.arenaId || '';
+  const react = q.get('react');
+  if (react) {
+    const fire = () => world.react(react, react === 'capture' ? { square: 'e4', victim: { type: 'p', color: 'b' } } : react === 'wanted' ? { level: 3 } : {});
+    setTimeout(fire, 2000);
+    setInterval(fire, 8000);
+  }
+  const sw = q.get('switch');
+  if (sw) {
+    const ids = sw.split(',').filter(Boolean);
+    let i = 0;
+    setInterval(async () => {
+      i = (i + 1) % ids.length;
+      await world.setArena(ids[i], { variant: variantFromQuery(q) });
+      applyCam();
+    }, 4000);
+  }
+  return world;
+}
+
+/** &lineup=1 (all anims) or &lineup=look (all anims in that look): NPC test row on the board, pieces hidden. */
+function npcLineup(world, mode) {
+  const crowd = world.arenas.current?.crowd;
+  if (!crowd) return;
+  world.pieces.group.visible = false;
+  const anims = ['idle', 'talk', 'phone', 'cheer', 'clap', 'dance', 'lean', 'sit', 'walk', 'wave_flag', 'drink', 'point', 'crossed', 'dance2', 'sit_ground'];
+  const look = mode === '1' ? null : mode;
+  const looks = ['street', 'racer', 'club', 'beach', 'dock', 'rich', 'suit'];
+  anims.forEach((anim, i) => {
+    const row = i < 8 ? 0 : 1;
+    const k = row ? i - 8 : i;
+    const x = -3.5 + k * (row ? 7 / 6 : 1);
+    const z = row ? -1.2 : 1.6;
+    crowd.spawn([{ at: [x, z], y: 0, face: 0, anim, look: look || looks[i % looks.length], body: i % 2 ? 'f' : 'm' }]);
+  });
+  crowd._blobsDirty = true;
+  // close-up camera (orbit controls still work)
+  world.controls.target.set(0, 0.9, 0.2);
+  world.camera.position.set(0, 2.2, 7.2);
+  world.controls.update();
 }
 
 function makeCaption(el) {

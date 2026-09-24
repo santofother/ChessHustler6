@@ -10,6 +10,7 @@ import {
   signalSvg,
   batterySvg,
 } from './icons.js';
+import { getArena, TITLE_ARENAS, DEFAULT_ARENA } from '../world/arenas/registry.js';
 
 const CREWS = {
   w: { name: 'VICE CREW', short: 'VICE', side: 'WHITE' },
@@ -22,6 +23,26 @@ const LEVELS = [
   { id: 3, name: 'KINGPIN', desc: 'Calculates. Punishes every loose piece on the block.' },
   { id: 4, name: 'BOSS', desc: 'Runs the whole city. Nobody walks away clean.' },
 ];
+
+// title LOCATION carousel: every title arena + RANDOM (resolved per match by GameController)
+const LOCATIONS = [...TITLE_ARENAS, 'random'];
+const RANDOM_LOC = {
+  id: 'random', short: 'RANDOM', name: 'Surprise me',
+  tagline: 'Let the city pick. A different spot every match.',
+  swatch: ['#ff5fa2', '#ffd36b', '#29e3d6', '#a259ff'],
+};
+function locInfo(id) {
+  return id === 'random' ? RANDOM_LOC : getArena(id);
+}
+function swatchBg(sw) {
+  const c = sw && sw.length ? sw : ['#ff5fa2', '#ff9a3c'];
+  return c.length > 2 ? `conic-gradient(from 200deg, ${[...c, c[0]].join(', ')})` : `linear-gradient(135deg, ${c[0]} 0%, ${c[1] || c[0]} 100%)`;
+}
+function validLoc(id) {
+  return LOCATIONS.includes(id) ? id : DEFAULT_ARENA;
+}
+const REDUCED_MOTION = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const LOC_PREVIEW_MS = 500;
 
 const PRIORITY = { wasted: 3, passed: 3, busted: 3, wanted: 2, info: 1 };
 const DURATION = { wasted: 3600, passed: 3600, busted: 3300, wanted: 1900, info: 3600 };
@@ -275,7 +296,16 @@ export class Hud {
     E.over = h('div', 'gtc-over gtc-layer');
     E.title = h('div', 'gtc-title gtc-layer');
 
-    r.append(E.game, E.banner, E.title, E.promo, E.over, E.loading);
+    // arena intro lower-third (match start) + "Driving to …" chip (arena loading) — both never take input
+    E.intro = h('div', 'gtc-intro', `
+      <div class="gtc-intro__kicker"></div>
+      <div class="gtc-intro__name"></div>
+      <div class="gtc-intro__tag"></div>`);
+    E.intro.setAttribute('aria-live', 'polite');
+    E.arenaChip = h('div', 'gtc-arenachip', `<i class="gtc-arenachip__ring" aria-hidden="true"></i><span></span>`);
+    E.arenaChip.setAttribute('role', 'status');
+
+    r.append(E.game, E.intro, E.banner, E.title, E.promo, E.over, E.loading, E.arenaChip);
 
     this._setPhone(this._phoneOpen, true);
     this._renderRadarBars();
@@ -327,10 +357,17 @@ export class Hud {
   }
 
   /* ----------------------------------------------------------------- title */
-  showTitle({ onStart } = {}) {
+  /**
+   * Title menu. onStart(opts) gets { mode, playerColor, level, arena } (arena: an arena id or 'random').
+   * Optional: onArena(id) — live preview of the LOCATION row ('random' = keep whatever is on screen); called
+   * right away with the shown location and then debounced (~500 ms) whenever it changes.
+   * arena — show this location instead of the saved one (not saved until the player changes/starts).
+   */
+  showTitle({ onStart, onArena, arena } = {}) {
     this._closeOver();
     this._closePromo('q');
     this._clearFlashes();
+    this.hideArenaIntro(true);
     this.setThinking(false);
     this.root.classList.remove('is-ingame');
     const E = this.el;
@@ -338,6 +375,10 @@ export class Hud {
     if (![1, 2, 3, 4].includes(o.level)) o.level = 2;
     if (o.mode !== 'local' && o.mode !== 'hustler') o.mode = 'ai';
     if (o.playerColor !== 'b') o.playerColor = 'w';
+    o.arena = validLoc(arena || o.arena);
+
+    const arrow = (d) =>
+      `<svg class="gtc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}"/></svg>`;
 
     E.title.innerHTML = `
       <div class="gtc-title__bg"></div><div class="gtc-title__glow"></div><div class="gtc-scan"></div>
@@ -357,6 +398,21 @@ export class Hud {
               <button type="button" data-v="hustler" class="gtc-seg__hustler">HUSTLER</button>
             </div>
             <div class="gtc-pm__desc gtc-pm__desc--mode"></div>
+          </div>
+          <div class="gtc-pm__row" data-row="arena">
+            <div class="gtc-pm__lbl">LOCATION</div>
+            <div class="gtc-loc" role="group" aria-label="Location">
+              <button type="button" class="gtc-loc__arrow" data-d="-1" aria-label="Previous location">${arrow(-1)}</button>
+              <button type="button" class="gtc-loc__card" data-d="1" aria-live="polite">
+                <i class="gtc-loc__sw"></i><span class="gtc-loc__txt"><b class="gtc-loc__name"></b><small class="gtc-loc__sub"></small></span>
+              </button>
+              <button type="button" class="gtc-loc__arrow" data-d="1" aria-label="Next location">${arrow(1)}</button>
+            </div>
+            <div class="gtc-loc__dots">${LOCATIONS.map((id, i) => {
+              const L = locInfo(id);
+              return `<button type="button" data-i="${i}" aria-label="${esc(L.name)}" style="--sw:${swatchBg(L.swatch)}"></button>`;
+            }).join('')}</div>
+            <div class="gtc-pm__desc gtc-loc__desc"></div>
           </div>
           <div class="gtc-pm__row" data-row="playerColor">
             <div class="gtc-pm__lbl">YOUR CREW</div>
@@ -378,8 +434,50 @@ export class Hud {
         </div>
       </div>`;
 
+    const loc = {
+      row: E.title.querySelector('[data-row="arena"]'),
+      card: E.title.querySelector('.gtc-loc__card'),
+      sw: E.title.querySelector('.gtc-loc__sw'),
+      name: E.title.querySelector('.gtc-loc__name'),
+      sub: E.title.querySelector('.gtc-loc__sub'),
+      desc: E.title.querySelector('.gtc-loc__desc'),
+      dots: [...E.title.querySelectorAll('.gtc-loc__dots button')],
+    };
+    let shownLoc = null;
+    const renderLoc = (dir = 0) => {
+      if (shownLoc === o.arena) return;
+      shownLoc = o.arena;
+      const L = locInfo(o.arena);
+      loc.sw.style.background = swatchBg(L.swatch);
+      loc.name.textContent = L.short;
+      const full = String(L.name || '').toUpperCase();
+      loc.sub.textContent = o.arena === 'random' ? 'NEW SPOT EVERY MATCH' : full !== L.short ? full : 'VICE CITY';
+      loc.desc.textContent = L.tagline || '';
+      const idx = LOCATIONS.indexOf(o.arena);
+      loc.dots.forEach((d, i) => d.classList.toggle('is-sel', i === idx));
+      if (dir && !REDUCED_MOTION) {
+        loc.card.classList.remove('is-from-l', 'is-from-r');
+        reflow(loc.card);
+        loc.card.classList.add(dir < 0 ? 'is-from-l' : 'is-from-r');
+      }
+    };
+    // live preview of the location behind the menu (debounced so flicking through doesn't load everything)
+    const preview = (now) => {
+      clearTimeout(this._locT);
+      const run = () => {
+        if (!this._title) return;
+        try {
+          onArena?.(o.arena);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      if (now) run();
+      else this._locT = setTimeout(run, LOC_PREVIEW_MS);
+    };
+
     const rows = () => [...E.title.querySelectorAll('[data-row]')].filter((x) => !x.classList.contains('is-hidden'));
-    const render = () => {
+    const render = (dir = 0) => {
       E.title.querySelector('[data-v="ai"]').textContent = `VS ${CREWS[o.playerColor === 'w' ? 'b' : 'w'].short} AI`;
       E.title.querySelectorAll('.gtc-seg').forEach((seg) => {
         const k = seg.dataset.key;
@@ -391,16 +489,20 @@ export class Hud {
         ? 'Campaign: start broke, hire a crew before every job, take Vice City one street at a time.'
         : '';
       E.title.querySelector('.gtc-start__lbl').textContent = hustler ? 'ENTER THE HUSTLE' : 'START MISSION';
+      loc.row.classList.toggle('is-hidden', hustler);
       E.title.querySelector('[data-row="playerColor"]').classList.toggle('is-hidden', !ai);
       E.title.querySelector('[data-row="level"]').classList.toggle('is-hidden', !ai);
       E.title.querySelector('[data-row="level"] .gtc-pm__desc').textContent = LEVELS[o.level - 1].desc;
+      renderLoc(dir);
       const rs = rows();
       if (this._titleFocus >= rs.length) this._titleFocus = rs.length - 1;
       rs.forEach((x, i) => x.classList.toggle('is-focus', i === this._titleFocus));
     };
+    const prefs = () => ({ mode: o.mode, playerColor: o.playerColor, level: o.level, arena: o.arena });
     const start = () => {
       if (!this._title) return;
-      const opts = { mode: o.mode, playerColor: o.playerColor, level: o.level };
+      clearTimeout(this._locT);
+      const opts = prefs();
       savePrefs(opts);
       this._title = null;
       E.title.classList.add('is-closing');
@@ -419,11 +521,29 @@ export class Hud {
         console.error(err);
       }
     };
+    const setArena = (id, dir) => {
+      if (id === o.arena) return;
+      o.arena = id;
+      savePrefs(prefs());
+      render(dir);
+      preview(false);
+    };
+    const stepArena = (dir) => {
+      const i = LOCATIONS.indexOf(o.arena);
+      setArena(LOCATIONS[(i + dir + LOCATIONS.length) % LOCATIONS.length], dir);
+    };
     const change = (key, dir) => {
+      if (key === 'arena') return stepArena(dir);
       const vals = key === 'mode' ? ['ai', 'local', 'hustler'] : key === 'playerColor' ? ['w', 'b'] : [1, 2, 3, 4];
       const i = vals.indexOf(o[key]);
+      const was = o.mode;
       o[key] = vals[Math.max(0, Math.min(vals.length - 1, i + dir))];
+      savePrefs(prefs());
       render();
+      if (key === 'mode' && was === 'hustler' && o.mode !== 'hustler') preview(false);
+    };
+    const focusRow = (rowEl) => {
+      this._titleFocus = rows().indexOf(rowEl);
     };
 
     E.title.querySelector('.gtc-title-audio').addEventListener('click', () => {
@@ -438,11 +558,30 @@ export class Hud {
         const b = e.target.closest('button');
         if (!b) return;
         const k = seg.dataset.key;
+        const was = o.mode;
         o[k] = k === 'level' ? +b.dataset.v : b.dataset.v;
-        this._titleFocus = rows().indexOf(seg.closest('[data-row]'));
+        savePrefs(prefs());
+        focusRow(seg.closest('[data-row]'));
         render();
+        if (k === 'mode' && was === 'hustler' && o.mode !== 'hustler') preview(false);
       });
     });
+    loc.row.querySelectorAll('[data-d]').forEach((b) =>
+      b.addEventListener('click', () => {
+        focusRow(loc.row);
+        stepArena(+b.dataset.d);
+        render();
+      }),
+    );
+    loc.dots.forEach((b) =>
+      b.addEventListener('click', () => {
+        focusRow(loc.row);
+        const i = +b.dataset.i;
+        const cur = LOCATIONS.indexOf(o.arena);
+        setArena(LOCATIONS[i], i < cur ? -1 : 1);
+        render(); // refresh the focus even when the dot was already selected
+      }),
+    );
     E.title.querySelector('.gtc-start').addEventListener('click', start);
 
     this._titleFocus = rows().length - 1; // START focused by default
@@ -475,6 +614,7 @@ export class Hud {
     render();
     E.title.classList.remove('is-closing');
     E.title.classList.add('is-open');
+    preview(true); // the saved LOCATION sits behind the menu (also when HUSTLER is picked: it chooses its own later)
   }
 
   /**
@@ -495,6 +635,59 @@ export class Hud {
   setInGame(on) {
     this.root.classList.toggle('is-ingame', !!on);
     if (on) this._drawMinimap();
+  }
+
+  /* ---------------------------------------------------------------- arenas */
+  /**
+   * Lower-third arena card at match start: { kicker, name, tagline }. Soft slide/fade in, ~3 s, fade out.
+   * Never blocks input (pointer-events: none) and stays off the board centre.
+   */
+  showArenaIntro({ kicker = 'VICE CITY', name = '', tagline = '' } = {}) {
+    const el = this.el.intro;
+    if (!name) return;
+    clearTimeout(this._introT);
+    clearTimeout(this._introT2);
+    el.querySelector('.gtc-intro__kicker').textContent = String(kicker || '').toUpperCase();
+    el.querySelector('.gtc-intro__name').textContent = String(name).toUpperCase();
+    el.querySelector('.gtc-intro__tag').textContent = tagline || '';
+    el.classList.remove('is-on', 'is-out');
+    reflow(el);
+    el.classList.add('is-on');
+    this._introT = setTimeout(() => this.hideArenaIntro(), 3600);
+  }
+  hideArenaIntro(instant) {
+    const el = this.el.intro;
+    clearTimeout(this._introT);
+    clearTimeout(this._introT2);
+    if (!el.classList.contains('is-on')) return;
+    if (instant) {
+      el.classList.remove('is-on', 'is-out');
+      return;
+    }
+    el.classList.add('is-out');
+    this._introT2 = setTimeout(() => el.classList.remove('is-on', 'is-out'), 700);
+  }
+
+  /**
+   * "Driving to <NAME>…" chip while an arena loads (hook for world.onArenaLoading). Shown after a short delay so
+   * instant swaps don't pop it, and kept up for a moment so it never blinks.
+   */
+  setArenaLoading(loading, info = {}) {
+    const chip = this.el.arenaChip;
+    clearTimeout(this._chipT);
+    if (loading) {
+      chip.querySelector('span').textContent = `Driving to ${info.name || 'the spot'}…`;
+      if (chip.classList.contains('is-on')) return;
+      this._chipShownAt = 0;
+      this._chipT = setTimeout(() => {
+        this._chipShownAt = performance.now();
+        chip.classList.add('is-on');
+      }, 180);
+      return;
+    }
+    if (!chip.classList.contains('is-on')) return;
+    const left = Math.max(0, 700 - (performance.now() - (this._chipShownAt || 0)));
+    this._chipT = setTimeout(() => chip.classList.remove('is-on'), left);
   }
 
   /* ------------------------------------------------------------ turn/clock */
@@ -1006,6 +1199,7 @@ export class Hud {
     this._closeOver(true);
     this.setThinking(false);
     this._disarmResign();
+    this.hideArenaIntro(true);
     clearTimeout(this._subT);
     this.el.subtitle.classList.remove('is-on');
     if (this._title) {

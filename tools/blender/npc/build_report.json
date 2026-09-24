@@ -1,0 +1,254 @@
+{
+ "variants": {
+  "floral_guy": {
+   "tris": 2474,
+   "phone_tris": 56,
+   "bytes": 127444,
+   "materials": [
+    "TINT_Skin",
+    "EYE",
+    "TINT_Hair",
+    "MOUTH",
+    "TINT_Shoes",
+    "SHOE_WHITE",
+    "TINT_Bottom",
+    "TINT_Top",
+    "TINT_Accent",
+    "GOLD"
+   ]
+  },
+  "tank_woman": {
+   "tris": 2564,
+   "phone_tris": 56,
+   "bytes": 127956,
+   "materials": [
+    "TINT_Skin",
+    "EYE",
+    "TINT_Hair",
+    "LIP",
+    "TINT_Accent",
+    "GOLD",
+    "TINT_Shoes",
+    "SHOE_WHITE",
+    "TINT_Bottom",
+    "TINT_Top",
+    "LEATHER"
+   ]
+  },
+  "hoodie_guy": {
+   "tris": 2768,
+   "phone_tris": 56,
+   "bytes": 136616,
+   "materials": [
+    "TINT_Skin",
+    "EYE",
+    "TINT_Hair",
+    "MOUTH",
+    "TINT_Accent",
+    "TINT_Shoes",
+    "SHOE_WHITE",
+    "TINT_Bottom",
+    "TINT_Top",
+    "SHIRT_WHITE"
+   ]
+  },
+  "party_woman": {
+   "tris": 2748,
+   "phone_tris": 56,
+   "bytes": 143968,
+   "materials": [
+    "TINT_Skin",
+    "EYE",
+    "TINT_Hair",
+    "LIP",
+    "GOLD",
+    "TINT_Shoes",
+    "TINT_Top",
+    "TINT_Bottom",
+    "TINT_Accent"
+   ]
+  },
+  "dock_worker": {
+   "tris": 2824,
+   "phone_tris": 56,
+   "bytes": 143456,
+   "materials": [
+    "TINT_Skin",
+    "EYE",
+    "TINT_Hair",
+    "MOUTH",
+    "TINT_Accent",
+    "TINT_Shoes",
+    "BLACK",
+    "TINT_Bottom",
+    "TINT_Top",
+    "HIVIS",
+    "REFLECT",
+    "DARK_GREY"
+   ]
+  },
+  "bodyguard": {
+   "tris": 2319,
+   "phone_tris": 56,
+   "bytes": 123120,
+   "materials": [
+    "TINT_Skin",
+    "TINT_Hair",
+    "MOUTH",
+    "LENS",
+    "CHROME",
+    "TINT_Shoes",
+    "BLACK",
+    "TINT_Bottom",
+    "TINT_Top",
+    "SHIRT_WHITE",
+    "TINT_Accent"
+   ]
+  },
+  "beach_guy": {
+   "tris": 2620,
+   "phone_tris": 56,
+   "bytes": 132192,
+   "materials": [
+    "TINT_Skin",
+    "EYE",
+    "TINT_Hair",
+    "MOUTH",
+    "LENS",
+    "TINT_Accent",
+    "TINT_Shoes",
+    "TINT_Bottom",
+    "TINT_Top",
+    "PRINT_B"
+   ]
+  },
+  "rich_old": {
+   "tris": 2584,
+   "phone_tris": 56,
+   "bytes": 135492,
+   "materials": [
+    "TINT_Skin",
+    "EYE",
+    "TINT_Hair",
+    "MOUTH",
+    "TINT_Accent",
+    "BLACK",
+    "TINT_Shoes",
+    "TINT_Bottom",
+    "TINT_Top",
+    "GOLD"
+   ]
+  }
+ },
+ "clips": {
+  "Idle": {
+   "duration": 3.0,
+   "frames": 91,
+   "loop": true
+  },
+  "Idle_Shift": {
+   "duration": 4.0,
+   "frames": 121,
+   "loop": true
+  },
+  "Talk": {
+   "duration": 3.0,
+   "frames": 91,
+   "loop": true
+  },
+  "Phone": {
+   "duration": 4.0,
+   "frames": 121,
+   "loop": true
+  },
+  "Cheer": {
+   "duration": 1.0,
+   "frames": 31,
+   "loop": true
+  },
+  "Cheer_Once": {
+   "duration": 2.4,
+   "frames": 73,
+   "loop": false
+  },
+  "Clap": {
+   "duration": 1.6,
+   "frames": 49,
+   "loop": true
+  },
+  "Dance": {
+   "duration": 2.0,
+   "frames": 61,
+   "loop": true
+  },
+  "Dance2": {
+   "duration": 2.0,
+   "frames": 61,
+   "loop": true
+  },
+  "Lean": {
+   "duration": 4.0,
+   "frames": 121,
+   "loop": true
+  },
+  "Crossed": {
+   "duration": 4.0,
+   "frames": 121,
+   "loop": true
+  },
+  "Sit": {
+   "duration": 4.0,
+   "frames": 121,
+   "loop": true
+  },
+  "Sit_Ground": {
+   "duration": 4.0,
+   "frames": 121,
+   "loop": true
+  },
+  "Walk": {
+   "duration": 0.8,
+   "frames": 25,
+   "loop": true
+  },
+  "Wave": {
+   "duration": 2.0,
+   "frames": 61,
+   "loop": true
+  },
+  "WaveFlag": {
+   "duration": 1.6,
+   "frames": 49,
+   "loop": true
+  },
+  "Drink": {
+   "duration": 4.0,
+   "frames": 121,
+   "loop": true
+  },
+  "Point": {
+   "duration": 2.0,
+   "frames": 61,
+   "loop": true
+  }
+ },
+ "anim_meta": {
+  "walk_speed_native": 1.25,
+  "sit_hips_offset": [
+   0.0,
+   -0.11999999731779099,
+   -0.3700000047683716
+  ]
+ },
+ "anims_bytes": 248972,
+ "props": {
+  "bytes": 24760,
+  "tris": 372,
+  "nodes": [
+   "Phone",
+   "Cup",
+   "Bottle",
+   "Flag"
+  ]
+ }
+}

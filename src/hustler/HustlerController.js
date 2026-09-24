@@ -17,8 +17,10 @@ import { botPlacement, placementBoard } from './army.js';
 import { Screens } from './ui/Screens.js';
 import { Deploy } from './ui/Deploy.js';
 import { VoiceLines } from './VoiceLines.js';
+import { arenaForNode } from '../world/arenas/registry.js';
 
 const PLAYER_COLORS = { primary: '#29e3d6', accent: '#ff5fa2' };
+const ARENA_WAIT_MS = 15000; // never hang the deploy phase on a slow arena load
 
 export class HustlerController {
   constructor({ world, hud, sfx, game, hudEl }) {
@@ -43,6 +45,19 @@ export class HustlerController {
     this.puzzles = null;
     this.puzzleCount = null;
     this._busy = false;
+    this.lastArena = null; // { id, variant } of the latest job this session (puzzles play there)
+  }
+
+  /** Drive to a job's arena (district + street variant). Resolves when shown, failed, or after a timeout. */
+  _driveTo(arena) {
+    if (!arena || !this.world.setArena) return Promise.resolve(false);
+    const p = Promise.resolve()
+      .then(() => this.world.setArena(arena.id, { variant: arena.variant || {} }))
+      .catch((err) => {
+        console.warn('[Hustler] arena load failed', err);
+        return false;
+      });
+    return Promise.race([p, new Promise((r) => setTimeout(() => r(false), ARENA_WAIT_MS))]);
   }
 
   // =================================================================== entry / exit
@@ -254,6 +269,10 @@ export class HustlerController {
     this._busy = true;
     try {
       this.map?.hide();
+      // the job's district arena loads behind the recruit screen; deploy + match happen there
+      const arena = arenaForNode(match.nodeId);
+      this.lastArena = arena;
+      const arenaReady = this._driveTo(arena);
       const bot = botPlacement(match.botArmy);
       const gangColors = match.leader.colors;
       let cart = null;
@@ -292,7 +311,9 @@ export class HustlerController {
           this.screens.toast(chk.error);
           continue;
         }
-        // --- deploy
+        // --- deploy (in the match arena)
+        await arenaReady;
+        if (f !== this.flow) return;
         this.screens.clear(null);
         const dep = await this.deploy.run({
           army: cart,
@@ -341,8 +362,10 @@ export class HustlerController {
         gangName: this.campaign.state.gangName,
         rivalName: L.alias || L.name,
       }));
+      const nh = match.neighborhoodId && lore.NEIGHBORHOODS?.[match.neighborhoodId];
       this.game.startCustom({
         fen,
+        introKicker: [nh?.name, match.nodeName].filter(Boolean).join(' · ') || null,
         profile: match.profile,
         cashTable: this.campaign.node(match.nodeId)?.captureBounty || null,
         voice,
@@ -424,6 +447,8 @@ export class HustlerController {
       if (!this.puzzles) this.puzzles = new PuzzleMode({ world: this.world, hud: this.hud, sfx: this.sfx, rootEl: this.layer });
       const c = this.campaign;
       await this.puzzles.run({
+        // calm Trap by default; after a job this session, the hustle board is set in that job's district
+        arena: this.lastArena || { id: 'trap', variant: {} },
         solvedIds: c.solvedPuzzleIds(),
         rewardFor: (p, { firstTry } = {}) => c.puzzleRewardFor(p, { firstTry }),
         onSolved: (p, { firstTry } = {}) => c.creditPuzzle(p, { firstTry }),

@@ -1,5 +1,6 @@
 // GameController — turn flow, modes, economy/heat, glue between World, Hud, Sfx and the AI (PLAN §1.7/1.8).
 import { Rules, toAnimArgs } from '../chess/rules.js';
+import { getArena, TITLE_ARENAS, DEFAULT_ARENA } from '../world/arenas/registry.js';
 
 export { toAnimArgs };
 
@@ -11,6 +12,9 @@ const AI_MIN_DELAY = 600;
 const ANIM_WATCHDOG = 5000;
 
 const CREW = { w: 'VICE CREW', b: 'CARTEL NOCTURNO' };
+const ARENA_LOAD_TIMEOUT = 15000;
+// intro-card kicker per registry district (VS AI / Local 2P); Hustler passes its own (neighborhood · street)
+const DISTRICT_LABEL = { nh1: 'SUNSET STRAND', nh2: 'RUSTWATER', nh3: 'NEON MILE', nh4: 'CROWN HILLS', downtown: 'DOWNTOWN VICE' };
 
 const TAUNTS = {
   move: [
@@ -92,6 +96,16 @@ export class GameController {
 
     this.custom = null; // Hustler match config (startCustom) or null for the normal modes
     this.onHustler = null; // set by main.js: called when the title menu picks HUSTLER MODE
+    this.lastArena = null; // arena of the previous VS AI / Local match (RANDOM avoids repeating it)
+    // ?arena=<id> (spec §4): the first title menu shows that arena instead of the saved LOCATION
+    try {
+      const a = new URLSearchParams(location.search).get('arena');
+      this._urlArena = a && TITLE_ARENAS.includes(a) ? a : null;
+    } catch {
+      this._urlArena = null;
+    }
+    // the one and only World.onArenaLoading hook → HUD "Driving to …" chip
+    this.world.onArenaLoading = (loading, info) => this.hud.setArenaLoading?.(loading, info);
 
     this._handlers = {
       square: (sq) => this.onSquareClick(sq),
@@ -155,7 +169,17 @@ export class GameController {
     this.world.setInputEnabled?.(false);
     this.world.setCameraPreset?.('white');
     this.viewColor = 'w';
+    const urlArena = this._urlArena;
+    this._urlArena = null;
     this.hud.showTitle({
+      arena: urlArena || undefined,
+      // live LOCATION preview behind the menu ('random' keeps what is on screen; the ?arena= boot arena is
+      // already loaded with its URL variant, so leave it alone on that first menu)
+      onArena: (id) => {
+        if (!id || id === 'random' || this.state !== 'menu') return;
+        if (urlArena && id === urlArena && this.world.arenaId === urlArena) return;
+        this.world.setArena?.(id)?.catch?.((err) => console.warn('[Game] arena preview failed', err));
+      },
       onStart: (opts) => {
         this.sfx?.resume();
         this.sfx?.play('click');
@@ -169,7 +193,8 @@ export class GameController {
     });
   }
 
-  newGame(opts = this.opts) {
+  /** VS AI / Local 2P. Loads the chosen LOCATION (RANDOM = a fresh pick per match) before the match starts. */
+  async newGame(opts = this.opts) {
     if (this.custom) {
       // leaving a Hustler match for a normal game: restore the stock look
       this.world.setTeamColors?.('w', null);
@@ -181,8 +206,47 @@ export class GameController {
       mode: opts?.mode === 'local' ? 'local' : 'ai',
       playerColor: opts?.playerColor === 'b' ? 'b' : 'w',
       level: Math.max(1, Math.min(4, +opts?.level || 2)),
+      arena: opts?.arena === 'random' || TITLE_ARENAS.includes(opts?.arena) ? opts.arena : this.opts.arena || DEFAULT_ARENA,
     };
+    const target = this.pickArena(this.opts.arena);
+    this.lastArena = target;
+    const id = ++this.gameId;
+    this.ai?.cancel?.();
+    this.state = 'menu'; // no input / clock while we drive over
+    this.selected = null;
+    this.world.setInputEnabled?.(false);
+    this.hud.setThinking?.(false);
+    if (this.world.setArena) {
+      // no-op when that arena (default variant) is already up — e.g. the title preview loaded it
+      try {
+        await Promise.race([this.world.setArena(target, { variant: {} }), delay(ARENA_LOAD_TIMEOUT)]);
+      } catch (err) {
+        console.warn('[Game] arena load failed', err);
+      }
+      if (id !== this.gameId) return; // menu / another game meanwhile
+    }
     this._begin();
+  }
+
+  /** 'random' → a title arena other than the previous match's (and the one on screen, when possible). */
+  pickArena(choice) {
+    if (choice !== 'random') return TITLE_ARENAS.includes(choice) ? choice : DEFAULT_ARENA;
+    let pool = TITLE_ARENAS.filter((a) => a !== this.lastArena && a !== this.world.arenaId);
+    if (!pool.length) pool = TITLE_ARENAS.filter((a) => a !== this.lastArena);
+    if (!pool.length) pool = TITLE_ARENAS;
+    return pick(pool);
+  }
+
+  /** Intro card + crowd 'start' reaction for the arena on screen. */
+  _arenaIntro() {
+    const id = this.gameId;
+    const entry = getArena(this.world.arenaId || DEFAULT_ARENA);
+    const kicker = this.custom?.introKicker || (entry.district && DISTRICT_LABEL[entry.district] ? `VICE CITY · ${DISTRICT_LABEL[entry.district]}` : 'VICE CITY');
+    this.world.react?.('start', {});
+    setTimeout(() => {
+      if (id !== this.gameId) return;
+      this.hud.showArenaIntro?.({ kicker, name: entry.name, tagline: entry.tagline });
+    }, 450);
   }
 
   /**
@@ -253,6 +317,7 @@ export class GameController {
       const ai = other(this.opts.playerColor);
       this.hud.flash(`${CREW[this.opts.playerColor]} vs ${CREW[ai]}`, 'info');
     }
+    this._arenaIntro();
     const over = this.rules.gameOver();
     if (over) {
       // a custom start can already be finished (e.g. bare kings = insufficient material)
@@ -359,6 +424,7 @@ export class GameController {
     this.setWanted(this.econ.wanted);
     if (m.captured) this.sfx?.play('cash');
     if (check && !mate) {
+      this.world.react?.('check', { color: this.rules.turn() }); // the side whose king is attacked
       this.sfx?.play('siren');
       this.hud.flash('WANTED', 'wanted');
     }

@@ -3,6 +3,12 @@
 //
 // URL params:
 //   ?demo=world | ?demo=hud   -> run the standalone demo of that module instead of the game
+//   ?demo=arena&arena=<id>&cam=white|black|top|cinematic[&time=..&boss=1][&react=capture|finale]
+//                             -> static arena viewer (start position, no HUD, window.__world)
+//   ?fps=1                    -> tiny fps meter (World)
+//   ?quality=low|high         -> force arena quality
+//   ?arena=<id>[&time=day|dusk|night][&boss=1] -> start in that arena (docs/arenas/ARENAS_SPEC.md)
+//   ?cam=white|black|top|cinematic             -> camera preset after load (screenshots)
 
 import { Sfx } from './audio/Sfx.js';
 import { Music } from './audio/Music.js';
@@ -14,6 +20,7 @@ import { Hud } from './ui/Hud.js';
 
 const DEMOS = {
   world: () => import('./world/demo.js'),
+  arena: () => import('./world/demo.js').then((m) => ({ demo: m.arenaDemo })),
   hud: () => import('./ui/demo.js'),
 };
 
@@ -45,12 +52,23 @@ function errText(err) {
 async function runDemo(name) {
   const load = DEMOS[name];
   if (!load) {
-    showMessage('Unknown demo', `Use <code>?demo=world</code> or <code>?demo=hud</code>.`);
+    showMessage('Unknown demo', `Use <code>?demo=world</code>, <code>?demo=arena&amp;arena=classic</code> or <code>?demo=hud</code>.`);
     return;
   }
   const mod = await load();
   // world demo renders into #app, hud demo into #hud
-  await mod.demo(name === 'world' ? appEl : hudEl);
+  await mod.demo(name === 'hud' ? hudEl : appEl);
+}
+
+/** ?arena=docks&time=night&boss=1 → { arena, variant } (empty object when absent). */
+export function arenaFromUrl() {
+  const id = params.get('arena');
+  if (!id) return {};
+  const variant = {};
+  if (params.get('time')) variant.time = params.get('time');
+  if (params.get('boss') || params.get('variant') === 'boss') variant.boss = true;
+  if (params.get('street')) variant.street = Number(params.get('street')) || 1;
+  return { arena: id, variant };
 }
 
 async function runGame() {
@@ -58,7 +76,7 @@ async function runGame() {
   hud.setLoading(0);
 
   const world = new World(appEl);
-  await world.init({ onProgress: (p) => hud.setLoading(Math.min(0.99, p)) });
+  await world.init({ onProgress: (p) => hud.setLoading(Math.min(0.99, p)), ...arenaFromUrl() });
   hud.setLoading(1);
 
   const sfx = new Sfx();
@@ -100,6 +118,9 @@ async function runGame() {
     }
   };
   game.showMenu();
+
+  const cam = params.get('cam');
+  if (cam) setTimeout(() => world.setCameraPreset(cam, { animate: false }), 300);
 
   // handy for debugging from the console
   window.__gtc = { world, hud, sfx, ai, game, hustler };

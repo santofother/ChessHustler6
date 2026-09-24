@@ -2,7 +2,8 @@
 // Contract: docs/hustler/HUSTLER_SPEC.md §4.6
 //
 //   const pm = new PuzzleMode({ world, hud, sfx, rootEl });   // hud/sfx may be null
-//   await pm.run({ solvedIds, rewardFor, onSolved });          // resolves when the player backs out to the map
+//   await pm.run({ solvedIds, rewardFor, onSolved, arena });   // resolves when the player backs out to the map
+//                                                              // arena: { id, variant } to play in (default: 'trap')
 //   pm.stop();                                                 // optional: force-exit (resolves run())
 //
 // While running it owns world.onSquareClick / onFx / onFrame and restores the previous handlers on exit.
@@ -60,9 +61,16 @@ export class PuzzleMode {
   }
 
   // ================================================================= public API
-  run({ solvedIds = new Set(), rewardFor = () => 0, onSolved = () => {} } = {}) {
+  run({ solvedIds = new Set(), rewardFor = () => 0, onSolved = () => {}, arena = null } = {}) {
     if (this.running) this.stop();
     this.running = true;
+    // puzzles are calm: The Trap unless the caller gives a district arena (docs/arenas/ARENAS_SPEC.md §1)
+    try {
+      const a = arena && arena.id ? arena : { id: 'trap', variant: {} };
+      this.world.setArena?.(a.id, { variant: a.variant || {} })?.catch?.((e) => console.warn('[puzzles] arena', e));
+    } catch (e) {
+      console.warn('[puzzles] arena', e);
+    }
     this._solved = new Set(solvedIds || []);
     this._rewardFor = rewardFor;
     this._onSolved = onSolved;

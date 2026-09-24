@@ -1044,7 +1044,7 @@
 .gtc-race.is-thinking .gtc-race__turn b::after {
   content: '\2026';
   display: inline-block;
-  animation: gtc-blink 1s steps(2) infinite;
+  animation: gtc-blink 1.6s ease-in-out infinite;
 }
 @keyframes gtc-blink {
   50% {
@@ -1649,7 +1649,7 @@
   height: 34px;
 }
 .gtc-banner__stars .gtc-star.is-on {
-  animation: gtc-starflash 0.5s steps(1) infinite;
+  animation: gtc-starflash 1.6s ease-in-out infinite alternate; /* soft, no hard blink */
 }
 
 /* =====================================================================
@@ -2051,4 +2051,322 @@
 }
 .gtc-pm__desc--mode:empty {
   display: none;
+}
+
+/* =====================================================================
+   ARENAS — title LOCATION carousel, arena intro lower-third, "Driving to…" chip
+   (no flashing: every transition is a soft ≥ 200 ms fade/slide; reduced motion = plain fades)
+   ===================================================================== */
+.gtc-loc {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 6px;
+}
+.gtc-loc__arrow,
+.gtc-loc__card {
+  position: relative;
+  min-height: 52px;
+  border: 0;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  transition: background 0.18s, color 0.18s, transform 0.12s;
+}
+.gtc-loc__arrow {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.gtc-loc__arrow .gtc-ico {
+  width: 20px;
+  height: 20px;
+}
+.gtc-loc__arrow:hover,
+.gtc-loc__card:hover {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+.gtc-loc__arrow:active,
+.gtc-loc__card:active {
+  transform: scale(0.97);
+}
+.gtc-pm__row.is-focus .gtc-loc__card {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 6px 18px rgba(255, 95, 162, 0.18);
+}
+.gtc-loc__card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 7px 12px 7px 8px;
+  text-align: left;
+  color: #fff;
+}
+.gtc-loc__card.is-from-r {
+  animation: gtc-locin-r 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.gtc-loc__card.is-from-l {
+  animation: gtc-locin-l 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes gtc-locin-r {
+  from {
+    opacity: 0.35;
+    transform: translateX(12px);
+  }
+}
+@keyframes gtc-locin-l {
+  from {
+    opacity: 0.35;
+    transform: translateX(-12px);
+  }
+}
+.gtc-loc__sw {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), inset 0 -8px 12px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.gtc-loc__txt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.gtc-loc__name {
+  font: 400 21px/1 var(--f-display);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gtc-loc__sub {
+  font: 700 9px/1.1 var(--f-body);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gtc-loc__dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+.gtc-loc__dots button {
+  width: 18px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: grid;
+  place-items: center;
+  transition: width 0.25s ease;
+}
+.gtc-loc__dots button::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--sw, #fff);
+  opacity: 0.4;
+  transition: width 0.25s ease, opacity 0.25s ease;
+}
+.gtc-loc__dots button:hover::before {
+  opacity: 0.75;
+}
+.gtc-loc__dots button.is-sel {
+  width: 26px;
+}
+.gtc-loc__dots button.is-sel::before {
+  width: 20px;
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+.gtc-loc__desc {
+  text-align: center;
+  margin-top: 6px;
+}
+@media (max-width: 420px) {
+  .gtc-loc {
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+  }
+  .gtc-loc__name {
+    font-size: 18px;
+  }
+  .gtc-loc__sw {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* arena intro lower-third */
+.gtc-intro {
+  position: absolute;
+  left: var(--gut);
+  bottom: calc(var(--gut) + 300px);
+  z-index: 4;
+  max-width: min(460px, calc(100vw - 2 * var(--gut)));
+  padding: 12px 22px 13px 18px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(18, 10, 38, 0.78) 0%, rgba(18, 10, 38, 0.55) 65%, rgba(18, 10, 38, 0) 100%);
+  border-radius: 4px 14px 14px 4px;
+  opacity: 0;
+  visibility: hidden;
+}
+.gtc-intro::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--sunset);
+}
+.gtc-intro.is-on {
+  visibility: visible;
+  animation: gtc-introin 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.gtc-intro.is-on.is-out {
+  animation: gtc-introout 0.7s ease both;
+}
+@keyframes gtc-introin {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes gtc-introout {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+.gtc-intro__kicker {
+  font: 800 11px/1 var(--f-body);
+  letter-spacing: 0.24em;
+  color: var(--yellow);
+}
+.gtc-intro__name {
+  margin-top: 6px;
+  font: 400 clamp(30px, 3.6vw, 46px)/0.95 var(--f-heavy);
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.55), 0 0 22px rgba(255, 95, 162, 0.35);
+}
+.gtc-intro__tag {
+  margin-top: 7px;
+  font: 600 italic 14px/1.35 var(--f-body);
+  color: rgba(255, 255, 255, 0.82);
+}
+.gtc-intro__tag:empty {
+  display: none;
+}
+
+/* "Driving to …" chip */
+.gtc-arenachip {
+  position: absolute;
+  top: calc(var(--gut) + 2px);
+  left: 50%;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: calc(100vw - 2 * var(--gut));
+  padding: 8px 15px 7px 11px;
+  border-radius: 999px;
+  background: rgba(18, 10, 38, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 8px 22px rgba(0, 0, 0, 0.35);
+  font: 17px/1 var(--f-display);
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -8px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.gtc-arenachip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gtc-arenachip.is-on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.gtc-arenachip__ring {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -1px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-top-color: var(--pink);
+  animation: gtc-spin 1.4s linear infinite;
+}
+@media (max-width: 760px) {
+  .gtc-intro {
+    bottom: auto;
+    top: calc(var(--gut) + 118px);
+    max-width: calc(100vw - 2 * var(--gut) - 40px);
+    padding: 9px 16px 10px 14px;
+  }
+  .gtc-intro__name {
+    font-size: 28px;
+  }
+  .gtc-intro__tag {
+    font-size: 12.5px;
+  }
+  .gtc-arenachip {
+    top: auto;
+    bottom: calc(var(--gut) + 6px);
+    font-size: 15px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gtc-loc__card.is-from-r,
+  .gtc-loc__card.is-from-l {
+    animation: none;
+  }
+  .gtc-intro.is-on {
+    animation: gtc-fadein-plain 0.5s ease both;
+  }
+  .gtc-intro.is-on.is-out {
+    animation: gtc-fadeout-plain 0.6s ease both;
+  }
+  .gtc-arenachip {
+    transform: translate(-50%, 0);
+  }
+  .gtc-arenachip__ring {
+    animation: none;
+    border-color: var(--pink);
+    opacity: 0.8;
+  }
+}
+@keyframes gtc-fadein-plain {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes gtc-fadeout-plain {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }

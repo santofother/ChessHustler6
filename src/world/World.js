@@ -7,7 +7,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Board } from './Board.js';
-import { Environment } from './Environment.js';
+import { ArenaManager, guessQuality } from './arenas/ArenaManager.js';
+import { DEFAULT_ARENA } from './arenas/registry.js';
 import { Pieces, loadModels, setTeamColors } from './Pieces.js';
 import { Effects } from './Effects.js';
 import { Tweener, Ease, clamp } from './util.js';
@@ -36,6 +37,7 @@ export class World {
     this.onSquareClick = null;
     this.onFx = null;
     this.onFrame = null;
+    this.onArenaLoading = null; // (loading:boolean, {id, name}) => void
     this.inputEnabled = true;
     this.ready = false;
     this._side = 'w';
@@ -53,7 +55,7 @@ export class World {
   }
 
   // ======================================================================= init
-  async init({ onProgress } = {}) {
+  async init({ onProgress, arena = DEFAULT_ARENA, variant = {} } = {}) {
     const progress = (p) => { try { onProgress && onProgress(clamp(p, 0, 1)); } catch (_) { /* ignore */ } };
     try {
       progress(0.02);
@@ -63,13 +65,14 @@ export class World {
       try { models = await loadModels(MODEL_NAMES, (p) => progress(0.05 + p * 0.75)); } catch (e) { console.warn('[world] model load', e); }
       this.models = models;
       const step = (name, fn) => { try { fn(); } catch (e) { console.error(`[world] ${name} failed`, e); } };
-      step('environment', () => this.env.build(models));
+      try { await this.arenas.set(arena, { variant, fade: false }); } catch (e) { console.error('[world] arena failed', e); }
       progress(0.85);
       step('board', () => this.scene.add(this.board.build()));
       step('pieces', () => this.pieces.init(models));
       progress(0.92);
       this._applyPreset(this._preset, false);
       this._setupInput();
+      this._setupFps();
       // warm up shaders so the first frame / first explosion don't hitch
       try {
         if (this.renderer.compileAsync) await this.renderer.compileAsync(this.scene, this.camera);
@@ -86,7 +89,7 @@ export class World {
 
   _setupRenderer() {
     const r = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance', alpha: false });
-    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    r.setPixelRatio(this._pixelRatio());
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
@@ -128,7 +131,7 @@ export class World {
   }
 
   _setupScene() {
-    this.env = new Environment(this.scene, this.renderer);
+    this.arenas = new ArenaManager(this);
     this.board = new Board();
     this.effects = new Effects(this.scene);
     this.pieces = new Pieces({ tweener: this.tweener, effects: this.effects });
@@ -150,6 +153,37 @@ export class World {
     } catch (_) { /* ignore */ }
   }
 
+  /** Device pixel ratio capped at 2 (1.5 on quality "low"). */
+  _pixelRatio() {
+    this._quality ??= guessQuality();
+    return Math.min(window.devicePixelRatio || 1, this._quality === 'low' ? 1.5 : 2);
+  }
+
+  _setupFps() {
+    try { if (new URLSearchParams(location.search).get('fps') !== '1') return; } catch (_) { return; }
+    const d = document.createElement('div');
+    Object.assign(d.style, {
+      position: 'absolute', left: '6px', top: '6px', zIndex: 50, padding: '2px 6px', borderRadius: '4px',
+      font: '12px/1.3 monospace', color: '#9dff3c', background: 'rgba(0,0,0,.55)', pointerEvents: 'none', whiteSpace: 'pre',
+    });
+    if (getComputedStyle(this.el).position === 'static') this.el.style.position = 'relative';
+    this.el.appendChild(d);
+    this._fps = { el: d, frames: 0, t0: performance.now() };
+    this.renderer.info.autoReset = false; // count all composer passes of a frame
+  }
+
+  _tickFps(now) {
+    const f = this._fps;
+    f.frames++;
+    if (now - f.t0 < 500) return;
+    const fps = (f.frames * 1000) / (now - f.t0);
+    const i = this.renderer.info;
+    const crowd = this.arenas?.current?.crowd;
+    f.el.textContent = `${fps.toFixed(0)} fps  ${i.render.calls} calls  ${(i.render.triangles / 1000).toFixed(0)}k tris
+geo ${i.memory.geometries} tex ${i.memory.textures} prg ${i.programs?.length ?? '?'}  npc ${crowd ? crowd.count : 0}`;
+    f.frames = 0; f.t0 = now;
+  }
+
   _size() {
     const w = this.el.clientWidth || window.innerWidth;
     const h = this.el.clientHeight || window.innerHeight;
@@ -159,7 +193,7 @@ export class World {
   _resize() {
     if (!this.renderer) return;
     const { w, h } = this._size();
-    const pr = Math.min(window.devicePixelRatio || 1, 2);
+    const pr = this._pixelRatio();
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     this.composer.setPixelRatio(pr);
@@ -409,7 +443,7 @@ export class World {
       this.tweener.update(dt);
       this.pieces.update(dt * this.tweener.speed, t);
       this.board.update(dt, t);
-      this.env.update(dt, t);
+      this.arenas.update(dt, t);
       this.effects.update(dt, t);
       this._updateCamTween(dt);
       if (!this._camTween) this.controls.update(dt);
@@ -419,9 +453,11 @@ export class World {
     }
     const so = this.effects.shakeOffset;
     this.camera.position.add(so);
+    if (this._fps) this.renderer.info.reset();
     this.composer.render(dt);
     this.camera.position.sub(so);
     if (this.onFrame) { try { this.onFrame(dt, t); } catch (e) { console.error(e); } }
+    if (this._fps) this._tickFps(now);
   }
 
   _emitFx(name, data) {
@@ -470,7 +506,20 @@ export class World {
     };
   }
 
-  setWanted(level) { this.effects.setWanted(level); }
+  setWanted(level) { this.effects.setWanted(level); this.react('wanted', { level }); }
+
+  // ----------------------------------------------------------------- arenas (docs/arenas/ARENAS_SPEC.md)
+  /** Swap the whole setting around the board. Latest call wins; resolves true when the arena is shown. */
+  async setArena(id, { variant = {} } = {}) {
+    if (!this.arenas) return false;
+    if (id === this.arenas.id && JSON.stringify(variant || {}) === JSON.stringify(this.arenas.variant || {})) return true;
+    return this.arenas.set(id, { variant });
+  }
+
+  get arenaId() { return this.arenas?.id || null; }
+
+  /** Crowd/arena reactions: 'capture' | 'check' | 'wanted' | 'finale' | 'start'. */
+  react(event, data = {}) { try { this.arenas?.react(event, data); } catch (e) { console.warn('[world] react', e); } }
   /** Capture popup amounts per piece type ({p,n,b,r,q}); null restores the default table. */
   setCashTable(table) { this.effects.cashTable = table || null; }
 
@@ -478,6 +527,7 @@ export class World {
     try {
       this.effects.playCaptureFx(square, victim);
       this._emitFx('explosion', { square, ...(victim || {}) });
+      this.react('capture', { square, victim });
     } catch (e) { console.error(e); }
   }
 
@@ -486,6 +536,7 @@ export class World {
     if (name === 'white') this._side = 'w';
     if (name === 'black') this._side = 'b';
     this._userMoved = false;
+    if (name === 'cinematic' && this.ready) this.react('finale', {});
     if (!this.camera) { this._preset = name; return; }
     this._applyPreset(name, animate);
   }
@@ -509,6 +560,7 @@ export class World {
   dispose() {
     try {
       this.renderer.setAnimationLoop(null);
+      this.arenas?.dispose();
       this._ro && this._ro.disconnect();
       this.controls.dispose();
       this.renderer.dispose();
