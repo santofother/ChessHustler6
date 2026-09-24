@@ -735,6 +735,14 @@
   .gtp-logo__big {
     font-size: 64px;
   }
+  .gtp-logo__small {
+    font-size: 26px;
+  }
+  .gtp-logo__sub {
+    font-size: 16px;
+    letter-spacing: 0.2em;
+    white-space: nowrap;
+  }
   .gtp-picker__tag,
   .gtp-credit {
     display: none;
@@ -769,6 +777,14 @@
   .gtp-nope {
     top: auto;
     bottom: 24px;
+  }
+  .gtp-reward {
+    top: auto;
+    bottom: 8%;
+    width: 100%;
+  }
+  .gtp-reward__band {
+    padding: 10px 16px 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -264,7 +264,7 @@ export class Campaign {
       this.state = s;
       return true;
     } catch (err) {
-      console.warn('[Hustler] save unreadable', err);
+      console.warn('[Hustler] save unreadable:', (err && err.message) || err);
       return false;
     }
   }
@@ -276,7 +276,7 @@ export class Campaign {
       this.onChange?.(this.state);
       return true;
     } catch (err) {
-      console.warn('[Hustler] could not save', err);
+      console.warn('[Hustler] could not save:', (err && err.message) || err);
       return false;
     }
   }
@@ -488,6 +488,7 @@ export class Campaign {
       type: nodeType(nodeId),
       neighborhoodId: nodeNeighborhood(nodeId),
       leader: this.leader(leaderId),
+      leaderId,
       botId: bot,
       profile: this.profile(bot),
       botArmy: normArmy(army),
@@ -619,8 +620,17 @@ export class Campaign {
 
     // --- refunds for survivors (free loan pawns are never refunded)
     const rate = this._refunds()[result] || 0;
+    // Resell at what was hired: a promoted pawn resells as a pawn, not as the piece it became,
+    // and nothing resells beyond the hired count of each type.
+    const hired = normArmy(am.army);
     const surv = { ...survivors };
-    surv.p = Math.max(0, surv.p - (am.freePawns || 0));
+    let promoted = 0;
+    for (const t of TYPES) {
+      if (t === 'p') continue;
+      promoted += Math.max(0, surv[t] - hired[t]);
+      surv[t] = Math.min(surv[t], hired[t]);
+    }
+    surv.p = Math.min(hired.p, Math.max(0, surv.p + promoted - (am.freePawns || 0)));
     const refund = rate > 0 ? TYPES.reduce((sum, t) => sum + surv[t] * this.prices[t] * rate, 0) : 0;
     const survCount = TYPES.reduce((sum, t) => sum + surv[t], 0);
     if (refund > 0) add(`Crew resold (${survCount} x ${Math.round(rate * 100)}%)`, refund);

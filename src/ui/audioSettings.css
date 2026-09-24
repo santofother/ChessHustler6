@@ -1,0 +1,184 @@
+/* Audio settings panel (AudioSettings.js) — same phone-card look as the HUD; lives inside .gtc-root. */
+.gtc-audio {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  font-family: var(--f-body, 'Inter', system-ui, sans-serif);
+}
+.gtc-audio[hidden] {
+  display: none;
+}
+.gtc-audio__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 5, 22, 0.55);
+  backdrop-filter: blur(3px);
+}
+.gtc-audio__card {
+  position: relative;
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 18px 20px 16px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, #2a1650 0%, #1b1036 60%, #120a26 100%);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 0 0 7px #0b0616, 0 24px 60px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  animation: gtc-audio-in 0.22s ease-out both;
+}
+.gtc-audio__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.gtc-audio__head h2 {
+  margin: 0;
+  font: 34px/1 var(--f-display, 'Bebas Neue', Impact, sans-serif);
+  letter-spacing: 0.06em;
+  flex: 1;
+}
+.gtc-audio__kicker {
+  font: 700 11px/1 var(--f-body, sans-serif);
+  letter-spacing: 0.18em;
+  color: var(--pink, #ff5fa2);
+}
+.gtc-audio__x {
+  border: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 15px;
+}
+.gtc-audio__x:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.gtc-audio__row {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.gtc-audio__lbl {
+  display: flex;
+  justify-content: space-between;
+  font: 18px/1 var(--f-display, 'Bebas Neue', Impact, sans-serif);
+  letter-spacing: 0.08em;
+}
+.gtc-audio__lbl b {
+  font: 700 13px/1 var(--f-body, sans-serif);
+  color: var(--yellow, #ffd36b);
+}
+.gtc-audio__note {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.gtc-audio__row input[type='range'] {
+  --fill: 50%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--pink, #ff5fa2), var(--orange, #ff9a3c) var(--fill), rgba(255, 255, 255, 0.14) var(--fill));
+  outline: none;
+  cursor: pointer;
+}
+.gtc-audio__row input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--orange, #ff9a3c), 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+.gtc-audio__row input[type='range']::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--orange, #ff9a3c), 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+.gtc-audio__row input[type='range']:focus-visible {
+  box-shadow: 0 0 0 2px var(--teal, #29e3d6);
+}
+.gtc-audio__card.is-muted .gtc-audio__row {
+  opacity: 0.45;
+}
+.gtc-audio__mute {
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(41, 227, 214, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(41, 227, 214, 0.5);
+  color: #bff8f3;
+  font: 18px/1 var(--f-display, 'Bebas Neue', Impact, sans-serif);
+  letter-spacing: 0.08em;
+}
+.gtc-audio__mute.is-off {
+  background: rgba(216, 38, 47, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 100, 0.6);
+  color: #ffc9cd;
+}
+.gtc-audio__now {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 6px;
+}
+.gtc-audio__now[hidden] {
+  display: none;
+}
+.gtc-audio__song {
+  display: grid;
+  gap: 2px;
+}
+.gtc-audio__song b {
+  font: 22px/1.05 var(--f-display, 'Bebas Neue', Impact, sans-serif);
+  letter-spacing: 0.05em;
+}
+.gtc-audio__song span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.gtc-audio__skip {
+  justify-self: start;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sunset, linear-gradient(135deg, #ff5fa2, #ff9a3c 55%, #ffd36b));
+  color: var(--navy, #1b1036);
+  font: 16px/1 var(--f-display, 'Bebas Neue', Impact, sans-serif);
+  letter-spacing: 0.08em;
+}
+.gtc-audio__hint {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+@keyframes gtc-audio-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gtc-audio__card {
+    animation: none;
+  }
+}

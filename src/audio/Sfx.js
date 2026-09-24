@@ -4,10 +4,31 @@
 //            'explosion'|'siren'|'cash'|'upgrade'|'castle'|'wasted'|'passed'|'busted'|'sms')
 //   sfx.fx(name, data)  -- World.onFx bridge ('move' {type}, 'land', 'explosion', 'upgrade', 'castle')
 //   sfx.setMuted(bool) / sfx.toggleMute() / sfx.muted     (persisted in localStorage)
+//   sfx.setVolume('master'|'music'|'sfx', 0..1) / sfx.audioState()   (persisted; music = soundtrack + radio)
 //   sfx.startRadio() / sfx.stopRadio()                    (quiet ambient synthwave loop)
 
 const MUTE_KEY = 'gtc.muted';
+const VOLUME_KEY = 'gtc.volume';
 const MASTER = 0.55;
+const DEFAULT_VOLUME = { master: 1, music: 0.8, sfx: 1 };
+
+function loadVolume() {
+  try {
+    const v = JSON.parse(localStorage.getItem(VOLUME_KEY) || 'null') || {};
+    const out = { ...DEFAULT_VOLUME };
+    for (const k of Object.keys(out)) if (Number.isFinite(v[k])) out[k] = Math.max(0, Math.min(1, v[k]));
+    return out;
+  } catch {
+    return { ...DEFAULT_VOLUME };
+  }
+}
+function saveVolume(v) {
+  try {
+    localStorage.setItem(VOLUME_KEY, JSON.stringify(v));
+  } catch {
+    /* storage blocked — ignore */
+  }
+}
 
 function loadMuted() {
   try {
@@ -37,8 +58,11 @@ export class Sfx {
     this.master = null;
     this.fxBus = null;
     this.radioBus = null;
+    this.musicBus = null; // soundtrack + synth radio, under the Music volume
     this._noise = null;
     this._muted = loadMuted();
+    this._volume = loadVolume();
+    this.onChange = null; // (state) => {} when volume/mute changes (settings panel, phone button)
     this._radio = null;
     this._radioWanted = false;
     this._last = {}; // name -> time, to throttle spammy sounds
@@ -56,7 +80,7 @@ export class Sfx {
         if (!AC) return;
         this.ctx = new AC();
         this.master = this.ctx.createGain();
-        this.master.gain.value = this._muted ? 0 : MASTER;
+        this.master.gain.value = this._masterGain();
         // gentle limiter so stacked explosions don't clip
         const comp = this.ctx.createDynamicsCompressor();
         comp.threshold.value = -12;
@@ -66,13 +90,18 @@ export class Sfx {
         comp.release.value = 0.25;
         this.master.connect(comp).connect(this.ctx.destination);
         this.fxBus = this.ctx.createGain();
+        this.fxBus.gain.value = this._volume.sfx;
         this.fxBus.connect(this.master);
+        this.musicBus = this.ctx.createGain();
+        this.musicBus.gain.value = this._volume.music;
+        this.musicBus.connect(this.master);
         this.radioBus = this.ctx.createGain();
         this.radioBus.gain.value = 0.12;
-        this.radioBus.connect(this.master);
+        this.radioBus.connect(this.musicBus);
       }
       if (this.ctx.state === 'suspended') this.ctx.resume();
       if (this._radioWanted && !this._radio) this.startRadio();
+      this.music?.resume();
     } catch (err) {
       console.warn('[Sfx] audio unavailable', err);
       this.ctx = null;
@@ -82,12 +111,35 @@ export class Sfx {
   setMuted(v) {
     this._muted = !!v;
     saveMuted(this._muted);
-    if (this.ctx && this.master) {
-      const t = this.ctx.currentTime;
-      this.master.gain.cancelScheduledValues(t);
-      this.master.gain.setTargetAtTime(this._muted ? 0 : MASTER, t, 0.03);
-    }
+    this._ramp(this.master, this._masterGain());
+    this.onChange?.(this.audioState());
     return this._muted;
+  }
+
+  /** Volume 0..1 for 'master' | 'music' | 'sfx' (persisted). */
+  setVolume(kind, value) {
+    if (!(kind in this._volume)) return;
+    this._volume[kind] = Math.max(0, Math.min(1, Number(value) || 0));
+    saveVolume(this._volume);
+    if (kind === 'master') this._ramp(this.master, this._masterGain());
+    if (kind === 'music') this._ramp(this.musicBus, this._volume.music);
+    if (kind === 'sfx') this._ramp(this.fxBus, this._volume.sfx);
+    this.onChange?.(this.audioState());
+  }
+
+  audioState() {
+    return { muted: this._muted, ...this._volume };
+  }
+
+  _masterGain() {
+    return this._muted ? 0 : MASTER * this._volume.master;
+  }
+
+  _ramp(node, value) {
+    if (!this.ctx || !node) return;
+    const t = this.ctx.currentTime;
+    node.gain.cancelScheduledValues(t);
+    node.gain.setTargetAtTime(value, t, 0.03);
   }
   toggleMute() {
     return this.setMuted(!this._muted);
@@ -434,8 +486,16 @@ export class Sfx {
 
   // ------------------------------------------------------------------ ambient radio
 
-  /** Quiet synthwave loop (bass + pads + hats) scheduled with a lookahead timer. */
-  startRadio() {
+  /**
+   * Background music. Uses the generated soundtrack (this.music, see Music.js) when it's available;
+   * otherwise a quiet synthwave loop (bass + pads + hats) scheduled with a lookahead timer.
+   * tag picks the soundtrack mood; matches use music.matchTag (set by Hustler per neighborhood) or 'match'.
+   */
+  startRadio(tag) {
+    if (this.music?.available) {
+      this.music.play(tag || this.music.matchTag || 'match');
+      return;
+    }
     this._radioWanted = true;
     if (!this.ctx || this._radio) return;
     const bpm = 96;

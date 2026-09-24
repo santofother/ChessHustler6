@@ -150,6 +150,7 @@ export class Hud {
     this._over = null;
     this._title = null;
     this._muted = false;
+    this._crews = { w: { ...CREWS.w }, b: { ...CREWS.b } };
     this._unread = 0;
     this._phoneOpen = !(window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
 
@@ -241,7 +242,7 @@ export class Hud {
             ['resign', 'RESIGN'],
             ['flip', 'FLIP'],
             ['camera', 'CAMERA'],
-            ['mute', 'SOUND'],
+            ['audio', 'SOUND'],
             ['menu', 'MENU'],
           ]
             .map(
@@ -256,7 +257,7 @@ export class Hud {
     E.typing = E.phone.querySelector('.gtc-typing');
     E.typingWho = E.phone.querySelector('.gtc-typing__who');
     E.appSubt = E.phone.querySelector('.gtc-app__subt');
-    E.muteBtn = E.phone.querySelector('[data-action="mute"]');
+    E.muteBtn = E.phone.querySelector('[data-action="audio"]'); // opens audio settings; icon shows mute state
     E.resignBtn = E.phone.querySelector('[data-action="resign"]');
 
     E.phone.querySelector('.gtc-app__min').addEventListener('click', () => this._setPhone(false));
@@ -335,7 +336,7 @@ export class Hud {
     const E = this.el;
     const o = this._opts;
     if (![1, 2, 3, 4].includes(o.level)) o.level = 2;
-    if (o.mode !== 'local') o.mode = 'ai';
+    if (o.mode !== 'local' && o.mode !== 'hustler') o.mode = 'ai';
     if (o.playerColor !== 'b') o.playerColor = 'w';
 
     E.title.innerHTML = `
@@ -353,7 +354,9 @@ export class Hud {
             <div class="gtc-seg" data-key="mode">
               <button type="button" data-v="ai"></button>
               <button type="button" data-v="local">LOCAL 2P</button>
+              <button type="button" data-v="hustler" class="gtc-seg__hustler">HUSTLER</button>
             </div>
+            <div class="gtc-pm__desc gtc-pm__desc--mode"></div>
           </div>
           <div class="gtc-pm__row" data-row="playerColor">
             <div class="gtc-pm__lbl">YOUR CREW</div>
@@ -369,7 +372,8 @@ export class Hud {
             </div>
             <div class="gtc-pm__desc"></div>
           </div>
-          <button type="button" class="gtc-start" data-row="start"><span>START MISSION</span>${actionSvg('chevron')}</button>
+          <button type="button" class="gtc-start" data-row="start"><span class="gtc-start__lbl">START MISSION</span>${actionSvg('chevron')}</button>
+          <button type="button" class="gtc-title-audio">${actionSvg('audio')}<span>AUDIO SETTINGS</span></button>
           <div class="gtc-pm__hint"><span><kbd>↑</kbd><kbd>↓</kbd> SELECT</span><span><kbd>←</kbd><kbd>→</kbd> CHANGE</span><span><kbd>ENTER</kbd> START</span></div>
         </div>
       </div>`;
@@ -382,9 +386,14 @@ export class Hud {
         seg.querySelectorAll('button').forEach((b) => b.classList.toggle('is-sel', String(o[k]) === b.dataset.v));
       });
       const ai = o.mode === 'ai';
+      const hustler = o.mode === 'hustler';
+      E.title.querySelector('.gtc-pm__desc--mode').textContent = hustler
+        ? 'Campaign: start broke, hire a crew before every job, take Vice City one street at a time.'
+        : '';
+      E.title.querySelector('.gtc-start__lbl').textContent = hustler ? 'ENTER THE HUSTLE' : 'START MISSION';
       E.title.querySelector('[data-row="playerColor"]').classList.toggle('is-hidden', !ai);
       E.title.querySelector('[data-row="level"]').classList.toggle('is-hidden', !ai);
-      E.title.querySelector('.gtc-pm__desc').textContent = LEVELS[o.level - 1].desc;
+      E.title.querySelector('[data-row="level"] .gtc-pm__desc').textContent = LEVELS[o.level - 1].desc;
       const rs = rows();
       if (this._titleFocus >= rs.length) this._titleFocus = rs.length - 1;
       rs.forEach((x, i) => x.classList.toggle('is-focus', i === this._titleFocus));
@@ -396,11 +405,14 @@ export class Hud {
       this._title = null;
       E.title.classList.add('is-closing');
       setTimeout(() => {
+        if (this._title) return; // re-opened meanwhile
         E.title.classList.remove('is-open', 'is-closing');
         E.title.innerHTML = '';
       }, 420);
-      this.root.classList.add('is-ingame');
-      this._drawMinimap();
+      if (opts.mode !== 'hustler') {
+        this.root.classList.add('is-ingame');
+        this._drawMinimap();
+      }
       try {
         onStart?.(opts);
       } catch (err) {
@@ -408,12 +420,19 @@ export class Hud {
       }
     };
     const change = (key, dir) => {
-      const vals = key === 'mode' ? ['ai', 'local'] : key === 'playerColor' ? ['w', 'b'] : [1, 2, 3, 4];
+      const vals = key === 'mode' ? ['ai', 'local', 'hustler'] : key === 'playerColor' ? ['w', 'b'] : [1, 2, 3, 4];
       const i = vals.indexOf(o[key]);
       o[key] = vals[Math.max(0, Math.min(vals.length - 1, i + dir))];
       render();
     };
 
+    E.title.querySelector('.gtc-title-audio').addEventListener('click', () => {
+      try {
+        this.onAction?.('audio');
+      } catch (err) {
+        console.error(err);
+      }
+    });
     E.title.querySelectorAll('.gtc-seg').forEach((seg) => {
       seg.addEventListener('click', (e) => {
         const b = e.target.closest('button');
@@ -456,6 +475,26 @@ export class Hud {
     render();
     E.title.classList.remove('is-closing');
     E.title.classList.add('is-open');
+  }
+
+  /**
+   * Optional extra (Hustler): override the crew names used in in-game strings (turn banner, typing indicator,
+   * cash labels, SMS sender). `null` (or a null side) restores the stock Vice Crew / Cartel Nocturno names.
+   */
+  setCrews(crews) {
+    for (const c of ['w', 'b']) {
+      const o = crews && crews[c];
+      this._crews[c] = o && o.name ? { ...CREWS[c], name: String(o.name), short: String(o.short || o.name) } : { ...CREWS[c] };
+      const lbl = this.el.cash[c].querySelector('.gtc-cash__crew');
+      if (lbl) lbl.innerHTML = `<i class="gtc-chip gtc-chip--${c}"></i>${esc(o && o.name ? this._crews[c].short : c === 'w' ? 'VICE CREW' : 'CARTEL')}`;
+    }
+    this._updateTyping();
+  }
+
+  /** Optional extra (Hustler): show/hide the in-game HUD layer (radar, cash, phone) without the title. */
+  setInGame(on) {
+    this.root.classList.toggle('is-ingame', !!on);
+    if (on) this._drawMinimap();
   }
 
   /* ------------------------------------------------------------ turn/clock */
@@ -608,7 +647,6 @@ export class Hud {
       }
       this._disarmResign();
     }
-    if (name === 'mute') this.setMuted(!this._muted);
     btn.classList.remove('is-tap');
     reflow(btn);
     btn.classList.add('is-tap');

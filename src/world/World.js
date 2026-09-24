@@ -8,12 +8,19 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Board } from './Board.js';
 import { Environment } from './Environment.js';
-import { Pieces, loadModels } from './Pieces.js';
+import { Pieces, loadModels, setTeamColors } from './Pieces.js';
 import { Effects } from './Effects.js';
 import { Tweener, Ease, clamp } from './util.js';
 
 const MODEL_NAMES = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king', 'palm', 'fence', 'barrier', 'streetlight'];
 const CLICK_PX = 6;
+const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // board surface, y = 0
+
+/** Board square under a world-space x/z point (a1 at x=-3.5, z=+3.5), or null off the board. */
+function sqFromXZ(x, z) {
+  const f = Math.floor(x + 4), r = Math.floor(4 - z);
+  return f >= 0 && f < 8 && r >= 0 && r < 8 ? String.fromCharCode(97 + f) + (r + 1) : null;
+}
 
 // camera presets: spherical around a target (radius, polar φ from +Y, azimuth θ around Y; θ=0 → +Z side)
 const PRESETS = {
@@ -36,6 +43,9 @@ export class World {
     this._camTween = null;
     this._hoverSq = null;
     this._pointer = { down: null, ndc: new THREE.Vector2(), dirty: false, inside: false };
+    this._selectedSq = null; // from highlight(): used by picking and drag-and-drop
+    this._selectedColor = null;
+    this._targets = new Set();
     this._raycaster = new THREE.Raycaster();
     this.tweener = new Tweener();
     this._t = 0;
@@ -231,44 +241,144 @@ export class World {
   }
 
   // ======================================================================= input
+  // Point-and-click and drag-and-drop both end in onSquareClick(square):
+  //  - click: pointer moved < CLICK_PX between down and up
+  //  - drag: press on a piece, move past CLICK_PX, release over a legal target (the piece follows the pointer)
+  // Pressing on a piece while input is enabled grabs it instead of orbiting; dragging empty space still orbits.
   _setupInput() {
     const c = this.canvas;
     const toNdc = (e) => {
       const r = c.getBoundingClientRect();
       this._pointer.ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     };
+    const releaseControls = () => { if (!this._camTween) this.controls.enabled = true; };
     c.addEventListener('pointerdown', (e) => {
       if (e.button !== 0 && e.pointerType === 'mouse') return;
-      this._pointer.down = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      toNdc(e);
+      const d = { x: e.clientX, y: e.clientY, id: e.pointerId, sq: null, dragging: false, over: null };
+      if (this.inputEnabled && this.onSquareClick) {
+        const sq = this._pickPiece(this._pointer.ndc);
+        if (sq) {
+          d.sq = sq;
+          this.controls.enabled = false; // this gesture moves the piece, not the camera
+          try { c.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+        }
+      }
+      this._pointer.down = d;
+    });
+    c.addEventListener('pointermove', (e) => {
+      toNdc(e);
+      const d = this._pointer.down;
+      if (d && d.sq && d.id === e.pointerId) {
+        if (!d.dragging && Math.hypot(e.clientX - d.x, e.clientY - d.y) >= CLICK_PX) this._startDrag(d);
+        if (d.dragging) this._updateDrag(d);
+        if (d.sq) return;
+      }
+      if (e.pointerType === 'touch') return; // no hover on touch
+      this._pointer.dirty = true; this._pointer.inside = true;
     });
     c.addEventListener('pointerup', (e) => {
       const d = this._pointer.down;
       this._pointer.down = null;
       if (!d || d.id !== e.pointerId) return;
+      if (d.sq) releaseControls();
+      if (d.dragging) { this._endDrag(d); this._pointer.dirty = true; return; }
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) >= CLICK_PX) { this._userMoved = true; return; }
       toNdc(e);
-      const sq = this._pick(this._pointer.ndc);
-      if (this.onSquareClick) { try { this.onSquareClick(sq); } catch (err) { console.error(err); } }
-    });
-    c.addEventListener('pointermove', (e) => {
-      if (e.pointerType === 'touch') return; // no hover on touch
-      toNdc(e);
-      this._pointer.dirty = true; this._pointer.inside = true;
+      this._emitClick(this._pick(this._pointer.ndc));
     });
     c.addEventListener('pointerleave', () => { this._pointer.inside = false; this._pointer.dirty = true; });
-    c.addEventListener('pointercancel', () => { this._pointer.down = null; });
+    c.addEventListener('pointercancel', () => {
+      const d = this._pointer.down;
+      this._pointer.down = null;
+      if (d?.sq) releaseControls();
+      if (d?.dragging) { this.board.setHover(null); this.pieces.endDrag(d.sq); }
+    });
     this.controls.addEventListener('start', () => { if (this._preset === 'cinematic') this.controls.autoRotate = false; });
   }
 
-  _pick(ndc) {
+  _emitClick(sq) {
+    if (this.onSquareClick) { try { this.onSquareClick(sq); } catch (err) { console.error(err); } }
+  }
+
+  _startDrag(d) {
+    // the piece must be selected so its legal targets are known; pieces that can't be selected aren't dragged
+    if (this._selectedSq !== d.sq) this._emitClick(d.sq);
+    if (this._selectedSq !== d.sq || !this._targets.size || !this.inputEnabled) {
+      d.sq = null;
+      if (!this._camTween) this.controls.enabled = true;
+      return;
+    }
+    d.dragging = true;
+    this._hoverSq = null;
+    this.pieces.setHover(null);
+    this.canvas.style.cursor = 'grabbing';
+  }
+
+  _updateDrag(d) {
+    const g = this._groundPoint(this._pointer.ndc);
+    if (!g) return;
+    this.pieces.dragTo(d.sq, clamp(g.x, -4.4, 4.4), clamp(g.z, -4.4, 4.4));
+    d.over = sqFromXZ(g.x, g.z);
+    this.board.setHover(d.over && this._targets.has(d.over) ? d.over : null);
+  }
+
+  _endDrag(d) {
+    this.board.setHover(null);
+    const to = d.over && d.over !== d.sq && this._targets.has(d.over) ? d.over : null;
+    if (!to) { this.pieces.endDrag(d.sq); return; }
+    this.pieces.endDrag(d.sq, { drop: to });
+    this._emitClick(to);
+    // if the move didn't happen (input is back on and the drop is still waiting), slide the piece home;
+    // while a promotion choice is open input stays off, so the piece waits where it was dropped
+    setTimeout(() => this._cancelStaleDrop(), 250);
+  }
+
+  _cancelStaleDrop() {
+    const drop = this.pieces._drop;
+    if (!drop || !this.inputEnabled || this.pieces._active) return;
+    this.pieces._drop = null;
+    this.pieces.endDrag(drop.from);
+  }
+
+  /** Where the pointer ray meets the board surface (y = 0). */
+  _groundPoint(ndc) {
     this._raycaster.setFromCamera(ndc, this.camera);
-    const hits = this._raycaster.intersectObject(this.pieces.group, true);
-    for (const h of hits) {
+    const hit = new THREE.Vector3();
+    return this._raycaster.ray.intersectPlane(GROUND, hit) ? hit : null;
+  }
+
+  /** First live piece under the pointer, or null. */
+  _pickPiece(ndc) {
+    this._raycaster.setFromCamera(ndc, this.camera);
+    for (const h of this._raycaster.intersectObject(this.pieces.group, true)) {
       let o = h.object;
       while (o && !o.userData.piece) o = o.parent;
       const p = o && o.userData.piece;
       if (p && !p.dead && this.pieces.bySquare.get(p.square) === p) return p.square;
     }
+    return null;
+  }
+
+  _pick(ndc) {
+    this._raycaster.setFromCamera(ndc, this.camera);
+    let first = null;
+    for (const h of this._raycaster.intersectObject(this.pieces.group, true)) {
+      let o = h.object;
+      while (o && !o.userData.piece) o = o.parent;
+      const p = o && o.userData.piece;
+      if (p && !p.dead && this.pieces.bySquare.get(p.square) === p) { first = { p, y: h.point.y }; break; }
+    }
+    // With a piece selected, a legal target hidden behind a taller piece (e.g. the square right in front of
+    // your king, seen from behind it) still counts: prefer the target under the pointer on the board surface
+    // unless the click was clearly low on a piece's own body.
+    if (this._targets.size && !(first && this._targets.has(first.p.square))) {
+      const g = this._groundPoint(ndc);
+      const under = g && sqFromXZ(g.x, g.z);
+      const ownBody = first && first.p.color === this._selectedColor && first.y < 0.3;
+      if (under && this._targets.has(under) && !ownBody) return under;
+    }
+    if (first) return first.p.square;
     const th = this._raycaster.intersectObjects(this.board.tiles, false);
     if (th.length) return th[0].object.userData.square;
     return null;
@@ -324,6 +434,9 @@ export class World {
   }
 
   highlight({ selected = null, moves = [], captures = [], lastMove = null, check = null } = {}) {
+    this._selectedSq = selected;
+    this._selectedColor = (selected && this.pieces.bySquare.get(selected)?.color) || null;
+    this._targets = new Set([...(moves || []), ...(captures || [])]);
     try {
       this.board.highlight({ selected, moves, captures, lastMove, check });
       this.pieces.setSelected(selected);
@@ -337,7 +450,29 @@ export class World {
     } catch (e) { console.error('[world] animateMove', e); }
   }
 
+  /**
+   * Screen position (CSS px, viewport coords) just above a live piece — used to anchor speech bubbles.
+   * Returns null if no such piece; onScreen=false when it's behind the camera or outside the view.
+   */
+  pieceScreenPos(color, type = 'k', lift = 1.35) {
+    let p = null;
+    for (const q of this.pieces.all) if (q.color === color && q.type === type && !q.dead) { p = q; break; }
+    if (!p || !this.camera) return null;
+    const v = new THREE.Vector3();
+    p.body.getWorldPosition(v);
+    v.y += lift;
+    v.project(this.camera);
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: rect.left + ((v.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - v.y) / 2) * rect.height,
+      onScreen: v.z < 1 && Math.abs(v.x) <= 1.05 && Math.abs(v.y) <= 1.05,
+    };
+  }
+
   setWanted(level) { this.effects.setWanted(level); }
+  /** Capture popup amounts per piece type ({p,n,b,r,q}); null restores the default table. */
+  setCashTable(table) { this.effects.cashTable = table || null; }
 
   playCaptureFx(square, victim = null) {
     try {
@@ -360,7 +495,13 @@ export class World {
   setInputEnabled(on) {
     this.inputEnabled = !!on;
     this._pointer.dirty = true;
+    if (on) this._cancelStaleDrop();
     if (!on) { this.board.setHover(null); this.pieces.setHover(null); this._hoverSq = null; }
+  }
+
+  /** Hustler: tint a side in a gang's colors ({primary, accent} hex) or null to restore the defaults. */
+  setTeamColors(color, colors = null) {
+    try { setTeamColors(color === 'b' ? 'b' : 'w', colors); } catch (e) { console.error('[world] setTeamColors', e); }
   }
 
   setAnimSpeed(mult = 1) { this.tweener.speed = clamp(Number(mult) || 1, 0.1, 5); }

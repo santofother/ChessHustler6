@@ -1,7 +1,7 @@
 // Hustler Mode — interactive City Map (pure view).
 //
 //   const map = new CityMap(rootEl);   // builds its DOM inside rootEl, hidden initially
-//   map.onAction = (name, payload) => {};  // 'play' {nodeId} | 'defend' {challengeId} | 'puzzles' | 'menu' | 'stats'
+//   map.onAction = (name, payload) => {};  // 'play' {nodeId} | 'defend' {challengeId} | 'puzzles' | 'menu' | 'stats' | 'audio'
 //   map.show(view); map.update(view); map.hide();
 //   map.focus(nodeId);      // pan/zoom to a node and open its card   (returns a Promise)
 //   map.celebrate(nodeId);  // animate a node flipping to owned        (returns a Promise)
@@ -40,6 +40,7 @@ const LINE = {
   puzzle: '<path d="M4 4h6v2.2a2 2 0 1 0 4 0V4h6v6h-2.2a2 2 0 1 0 0 4H20v6h-6v-2.2a2 2 0 1 0-4 0V20H4z"/>',
   log: '<path d="M5 4h14v16H5z"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4"/>',
   stats: '<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+  audio: '<path d="M4 9.2h3.8L13 5v14l-5.2-4.2H4z"/><path d="M16.5 8.8a4.6 4.6 0 0 1 0 6.4"/><path d="M19 6.3a8 8 0 0 1 0 11.4"/>',
   legend: '<circle cx="6" cy="7" r="2"/><circle cx="6" cy="17" r="2"/><path d="M11 7h9M11 17h9"/>',
   pin: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
   chev: '<path d="M9 5l7 7-7 7"/>',
@@ -136,15 +137,16 @@ export class CityMap {
   }
 
   /** Pan/zoom to a node and open its card. */
-  focus(nodeId) {
+  focus(nodeId, { animate = true } = {}) {
     const pos = L.NODES[nodeId];
     if (!pos) return Promise.resolve();
+    this._fitted = true; // don't let a pending first-show fit override this
     this._hideTip();
     this._openCard(nodeId);
     const { w, h } = this._size();
     const k = clamp(Math.max(this.k, this._fitK() * 1.9), this._minK(), this._maxK());
     const [cx, cy] = this._focusCenter(w, h);
-    return this._animateTo(k, cx - pos[0] * k, cy - pos[1] * k, 700);
+    return this._animateTo(k, cx - pos[0] * k, cy - pos[1] * k, animate ? 700 : 0);
   }
 
   /** Animate a node flipping to owned. */
@@ -233,12 +235,15 @@ export class CityMap {
     el.hidden = true;
     el.setAttribute('role', 'application');
     el.setAttribute('aria-label', 'City map');
+    el.style.setProperty('--gsun', `url(#${id}-sunset)`);
 
     const terr = Object.entries(L.TERRITORIES);
     const land = `<path d="${L.LAND_PATH}"/><path d="${L.ISLAND_PATH}"/>`;
 
     // ---- decoration strings
-    const blocks = L.BLOCKS.map((b) => `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="1.5"/>`).join('');
+    const blocks = L.BLOCKS.map(
+      (b) => `<rect class="is-${b.tone || 'condo'}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="1.5"/>`,
+    ).join('');
     const bShadow = L.BUILDINGS.map(
       (b) => `<rect x="${b.x + b.z * 0.7}" y="${b.y + b.z}" width="${b.w}" height="${b.h}" rx="1.5"/>`,
     ).join('');
@@ -250,15 +255,55 @@ export class CityMap {
     const parks = L.PARKS.map(
       ([x, y, rx, ry, r]) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})"/>`,
     ).join('');
-    const piers = L.PIERS.map(([x, y, w, h]) => `<rect x="${x}" y="${y - 10}" width="${w}" height="${h}" rx="2"/>`).join('');
-    const containers = L.CONTAINERS.map((c) => `<rect x="${c.x}" y="${c.y}" width="22" height="8" rx="1" fill="${c.c}"/>`).join('');
-    const cranes = L.CRANES.map(
-      ([x, y]) => `<g transform="translate(${x},${y})"><path d="M-10,0 L-10,-26 L22,-26 M-10,-20 L4,-26 M6,-26 L6,44"/></g>`,
-    ).join('');
+    // nh1 beach: pier + ferris wheel, umbrellas, palms
+    const [px, py, pw, ph] = L.PIER;
+    const [fx, fy, fr] = L.FERRIS;
+    let spokes = '';
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      spokes += `M0,0 L${(Math.cos(a) * fr).toFixed(1)},${(Math.sin(a) * fr).toFixed(1)} `;
+    }
+    const piers =
+      `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="2"/>` +
+      `<rect x="${px - 14}" y="${py + ph - 6}" width="${pw + 28}" height="22" rx="3"/>` +
+      `<g class="gcm-ferris" transform="translate(${fx},${fy})"><g class="gcm-ferris__wheel"><circle r="${fr}"/><path d="${spokes}"/>` +
+      Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * Math.PI * 2 + 0.39;
+        return `<circle class="gcm-ferris__cab" cx="${(Math.cos(a) * fr).toFixed(1)}" cy="${(Math.sin(a) * fr).toFixed(1)}" r="2.6"/>`;
+      }).join('') +
+      '</g></g>';
+    const umbrellas = L.UMBRELLAS.map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3.4" fill="${c}"/>`).join('');
     const palms = L.PALMS.map(
       ([x, y]) =>
         `<g transform="translate(${x},${y})"><path d="M0,0 l-6,-3 M0,0 l6,-3 M0,0 l-4,5 M0,0 l5,4 M0,0 l0,-7"/></g>`,
     ).join('');
+    // nh2 port
+    const containers = L.CONTAINERS.map(
+      (c) => `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="1" fill="${c.c}"/>`,
+    ).join('');
+    const cranes = L.CRANES.map(
+      ([x, y]) => `<g transform="translate(${x},${y})"><rect x="-5" y="-8" width="10" height="16" rx="1"/><path d="M0,-5 L34,-5 M0,5 L34,5 M8,-5 L8,5 M20,-5 L20,5 M32,-5 L32,5"/></g>`,
+    ).join('');
+    const ships = L.SHIPS.map(([x, y, len]) => {
+      let deck = '';
+      for (let i = 0; i < Math.floor((len - 34) / 12); i++) deck += `<rect x="-7" y="${18 + i * 12}" width="14" height="10" rx="1"/>`;
+      return `<g transform="translate(${x},${y})"><path class="gcm-ship__hull" d="M0,0 L11,14 L11,${len} L-11,${len} L-11,14Z"/><g class="gcm-ship__deck">${deck}</g><rect class="gcm-ship__bridge" x="-9" y="${len - 16}" width="18" height="10" rx="1.5"/></g>`;
+    }).join('');
+    // nh3 neon strip
+    const neon =
+      `<path class="gcm-neon__glow" d="${L.NEON_STRIP}"/><path class="gcm-neon__road" d="${L.NEON_STRIP}"/><path class="gcm-neon__line" d="${L.NEON_STRIP}"/>` +
+      L.NEON_SIGNS.map(([x, y, c]) => `<circle class="gcm-neon__sign" cx="${x}" cy="${y}" r="3.2" style="--nc:${c}"/>`).join('');
+    // nh4 hills
+    const hills =
+      L.CONTOURS.map((d) => `<path class="gcm-contour" d="${d}"/>`).join('') +
+      `<g class="gcm-polo"><rect x="${L.POLO[0]}" y="${L.POLO[1]}" width="${L.POLO[2]}" height="${L.POLO[3]}" rx="4"/><path d="M${L.POLO[0] + L.POLO[2] / 2},${L.POLO[1] + 4} v${L.POLO[3] - 8}"/></g>` +
+      L.MANSIONS.map(
+        (m) =>
+          `<g class="gcm-mansion"><rect class="gcm-mansion__lawn" x="${m.x - 6}" y="${m.y - 6}" width="${m.w + 12}" height="${m.h + 18}" rx="4"/><rect x="${m.x}" y="${m.y}" width="${m.w}" height="${m.h}" rx="1.5"/>` +
+          (m.pool ? `<rect class="gcm-mansion__pool" x="${m.x + 2}" y="${m.y + m.h + 3}" width="${m.w * 0.55}" height="5" rx="1.5"/>` : '') +
+          '</g>',
+      ).join('') +
+      `<g class="gcm-helipad" transform="translate(${L.HELIPAD[0]},${L.HELIPAD[1]})"><circle r="${L.HELIPAD[2]}"/><path d="M-4,-5 v10 M4,-5 v10 M-4,0 h8"/></g>`;
     const boats = L.BOATS.map(
       ([x, y, r]) =>
         `<g transform="translate(${x},${y}) rotate(${r})"><path class="gcm-boat__wake" d="M-2,6 Q-6,22 -12,40 M2,6 Q6,22 12,40"/><path class="gcm-boat__hull" d="M0,-9 L4,-2 L4,7 L-4,7 L-4,-2Z"/></g>`,
@@ -297,8 +342,7 @@ export class CityMap {
           `<g class="gcm-tlabel" data-terr="${tid}" transform="translate(${t.label[0]},${t.label[1]})">` +
           `<text class="gcm-tlabel__name" text-anchor="middle"></text>` +
           `<text class="gcm-tlabel__sub" text-anchor="middle" y="20"></text></g>` +
-          `<g class="gcm-tlock" data-terr="${tid}" transform="translate(${t.lock[0]},${t.lock[1]})">` +
-          `<circle r="22"/><path transform="translate(-11,-12) scale(0.92)" fill-rule="evenodd" d="${ICONS.lock}"/></g>`,
+          '',
       )
       .join('');
 
@@ -306,6 +350,7 @@ export class CityMap {
 <svg class="gcm-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="false">
   <defs>
     <clipPath id="${id}-land">${land}</clipPath>
+    <clipPath id="${id}-beachclip"><path d="M330,760 L1110,760 L1175,700 L1260,700 L1260,1000 L330,1000Z"/></clipPath>
     <linearGradient id="${id}-ocean" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0b2a4a"/><stop offset=".55" stop-color="#0a1f3d"/><stop offset="1" stop-color="#0d1330"/>
     </linearGradient>
@@ -340,25 +385,28 @@ export class CityMap {
     <ellipse class="gcm-glint" cx="1480" cy="900" rx="420" ry="260" fill="url(#${id}-glint)"/>
     <g class="gcm-boats">${boats}</g>
     <g class="gcm-shallows">${land}</g>
+    <g class="gcm-ships">${ships}</g>
     <g class="gcm-piers">${piers}</g>
     <g class="gcm-land" fill="url(#${id}-land-g)">${land}</g>
     <g clip-path="url(#${id}-land)">
       <g class="gcm-terrs">${terrFills}</g>
       <rect class="gcm-gridtex" x="-400" y="-400" width="2400" height="1800" fill="url(#${id}-grid)"/>
       <g class="gcm-parks">${parks}</g>
+      <g class="gcm-hills">${hills}</g>
       <g class="gcm-blocks">${blocks}</g>
       <g class="gcm-bld-shadow">${bShadow}</g>
       <g class="gcm-bld">${bTops}</g>
+      <g clip-path="url(#${id}-beachclip)"><g class="gcm-beach-coast"><path d="${L.LAND_PATH}"/></g></g>
+      <g class="gcm-port"><path class="gcm-port__island" d="${L.ISLAND_PATH}"/></g>
       <g class="gcm-containers">${containers}</g>
+      <g class="gcm-neon">${neon}</g>
       <g class="gcm-turf"></g>
     </g>
-    <g class="gcm-beach"><path d="${L.ISLAND_PATH}"/></g>
-    <g class="gcm-beach-coast" clip-path="url(#${id}-beachclip)"><path d="${L.LAND_PATH}"/></g>
-    <clipPath id="${id}-beachclip"><rect x="1140" y="360" width="200" height="400"/></clipPath>
     <g class="gcm-water"><path d="${L.RIVER_PATH}"/><path d="${L.CANAL_PATH}"/></g>
     <g class="gcm-cranes">${cranes}</g>
     <g class="gcm-hw">${hw}</g>
     <g class="gcm-traffic">${traffic}</g>
+    <g class="gcm-umbrellas">${umbrellas}</g>
     <g class="gcm-palms">${palms}</g>
     <g clip-path="url(#${id}-land)"><g class="gcm-borders">${terrBorders}</g></g>
     <g class="gcm-roads"></g>
@@ -390,6 +438,7 @@ ${svg}
       <button class="gcm-btn gcm-btn--hot" data-act="puzzles" type="button">${lineSvg('puzzle')}<span>PUZZLES</span><i class="gcm-badge" data-f="puz"></i></button>
       <button class="gcm-btn" data-ui="log" type="button" aria-expanded="false">${lineSvg('log')}<span>NEWS</span><i class="gcm-badge gcm-badge--dim" data-f="logn"></i></button>
       <button class="gcm-btn" data-act="stats" type="button">${lineSvg('stats')}<span>STATS</span></button>
+      <button class="gcm-btn" data-act="audio" type="button">${lineSvg('audio')}<span>AUDIO</span></button>
       <button class="gcm-btn" data-act="menu" type="button">${lineSvg('menu')}<span>MENU</span></button>
     </nav>
   </div>
@@ -443,7 +492,7 @@ ${svg}
       <li><span class="gcm-legend__sw gcm-legend__sw--fog"></span><span>Locked territory</span></li>
     </ul>
     <p class="gcm-legend__keys"><kbd>Drag</kbd> pan · <kbd>Wheel</kbd> zoom · <kbd>Esc</kbd> close</p>`;
-    if (typeof innerWidth === 'number' && innerWidth > 900) this._toggleLegend(true);
+    if (typeof innerWidth === 'number' && innerWidth > 1100 && innerHeight > 820) this._toggleLegend(true);
 
     // node markers (created once; data-status drives the look)
     this.nodeEls = {};
@@ -687,7 +736,12 @@ ${svg}
   }
   _topH() {
     const t = this.el.querySelector('.gcm-top');
-    return t ? t.getBoundingClientRect().height : 64;
+    let h = t ? t.getBoundingClientRect().height : 64;
+    if (!this.chal.hidden) {
+      const r = this.chal.getBoundingClientRect();
+      if (r.height) h = Math.max(h, r.bottom - this.el.getBoundingClientRect().top + 4);
+    }
+    return h;
   }
   _cardW() {
     if (!this.selected || this._isNarrow()) return 0;
@@ -726,17 +780,11 @@ ${svg}
   _clampPan() {
     const { w, h } = this._size();
     const b = L.FIT_BOX;
-    const m = 120;
-    const minX = w - (b.x + b.w) * this.k - m;
-    const maxX = -b.x * this.k + m;
-    const minY = h - (b.y + b.h) * this.k - m;
-    const maxY = -b.y * this.k + m + this._topH();
-    const cw = (b.w * this.k);
-    const ch = (b.h * this.k);
-    this.tx = cw + 2 * m < w ? clamp(this.tx, maxX - m * 2, minX + m * 2) : clamp(this.tx, minX, maxX);
-    this.ty = ch + 2 * m < h ? clamp(this.ty, maxY - m * 2, minY + m * 2) : clamp(this.ty, minY, maxY);
-    if (cw + 2 * m < w && minX + m * 2 < maxX - m * 2) this.tx = clamp(this.tx, minX + m * 2, maxX - m * 2);
-    if (ch + 2 * m < h && minY + m * 2 < maxY - m * 2) this.ty = clamp(this.ty, minY + m * 2, maxY - m * 2);
+    // keep at least part of the city on screen; generous so edge nodes can be centred beside the card
+    const mx = w * 0.6;
+    const my = h * 0.6;
+    this.tx = clamp(this.tx, w - (b.x + b.w) * this.k - mx, -b.x * this.k + mx);
+    this.ty = clamp(this.ty, h - (b.y + b.h) * this.k - my, -b.y * this.k + my);
   }
 
   _apply() {
@@ -754,7 +802,7 @@ ${svg}
 
   _animateTo(k, tx, ty, dur) {
     this._stopAnim();
-    if (this.reducedMotion || !this.visible) {
+    if (this.reducedMotion || !this.visible || dur <= 0) {
       this.k = k;
       this.tx = tx;
       this.ty = ty;

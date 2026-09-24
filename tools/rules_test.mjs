@@ -296,5 +296,65 @@ console.log('controller:');
   g.dispose();
 }
 
+
+// ------------------------------------------------------------------ Hustler custom starts
+console.log('custom start (Hustler):');
+{
+  // custom FEN + profile + onGameEnd instead of showGameOver
+  const m = mocks();
+  m.hud.crews = [];
+  m.hud.setCrews = (c) => m.hud.crews.push(c);
+  m.world.setTeamColors = () => {};
+  const g = new GameController(m);
+  let ended = null;
+  const profile = { label: 'Test', maxDepth: 1 };
+  const levels = [];
+  const orig = m.ai.getBestMove;
+  m.ai.getBestMove = (fen, lvl) => (levels.push(lvl), orig(fen, lvl));
+  g.startCustom({
+    fen: '4k3/8/8/8/8/8/3PP3/4K2R w K - 0 1',
+    profile,
+    opponent: { name: 'Two-Pawn Dez', crew: 'The Strand Rats', lines: { intro: 'hi' }, taunts: ['yo'] },
+    player: { name: 'Test Crew' },
+    onGameEnd: (s) => (ended = s),
+  });
+  ok(g.rules.fen() === '4k3/8/8/8/8/8/3PP3/4K2R w K - 0 1' && g.state === 'human', 'starts from the custom FEN, human (white) to move');
+  ok(m.hud.crews.at(-1)?.b?.name === 'THE STRAND RATS', 'HUD crew names overridden', m.hud.crews.at(-1));
+  await clickPath(g, ['e2', 'e4']);
+  for (let i = 0; i < 200 && g.state !== 'human'; i++) await delay(5);
+  ok(levels[0] === profile, 'AI called with the bot profile object');
+  g.undo();
+  ok(g.rules.historyLength() === 2, 'undo disabled in Hustler matches');
+  g.onAction('resign');
+  for (let i = 0; i < 100 && !ended; i++) await delay(5);
+  ok(ended && ended.result === 'loss' && ended.reason === 'resign' && ended.moves === 1, 'resign -> onGameEnd loss', ended);
+  ok(ended && ended.survivors.p === 2 && ended.survivors.r === 1, 'survivors counted from the final board', ended?.survivors);
+  ok(!m.hud.over, 'normal game-over card not shown');
+  g.newGame({ mode: 'ai', playerColor: 'w', level: 3 });
+  ok(g.custom === null && g.rules.fen().startsWith('rnbqkbnr/pppppppp'), 'normal newGame after Hustler uses standard start');
+  ok(m.hud.crews.at(-1) === null, 'crew names restored');
+  g.dispose();
+}
+{
+  const m = mocks();
+  const g = new GameController(m);
+  let ended = null;
+  g.startCustom({ fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1', profile: { maxDepth: 1 }, onGameEnd: (s) => (ended = s) });
+  await clickPath(g, ['a1', 'a8']);
+  for (let i = 0; i < 100 && !ended; i++) await delay(5);
+  ok(ended?.result === 'win' && ended.reason === 'checkmate' && ended.winner === 'w', 'Ra8# -> win', ended);
+  g.startCustom({ fen: 'not a fen', profile: { maxDepth: 1 }, onGameEnd: () => {} });
+  ok(g.rules.fen().startsWith('rnbqkbnr/pppppppp'), 'invalid FEN falls back to the standard start');
+  let ended2 = null;
+  g.startCustom({ fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1', onGameEnd: (s) => (ended2 = s) });
+  for (let i = 0; i < 100 && !ended2; i++) await delay(5);
+  ok(ended2?.result === 'standoff' && ended2.reason === 'insufficient', 'already-drawn start ends immediately as standoff', ended2);
+  let menu = 0;
+  g.startCustom({ fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1', onMenu: () => menu++, onGameEnd: () => {} });
+  g.onAction('menu');
+  ok(menu === 1 && g.state === 'human', 'phone MENU in a Hustler match calls onMenu');
+  g.dispose();
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL OK');
 process.exit(failures ? 1 : 0);

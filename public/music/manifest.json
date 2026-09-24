@@ -1,0 +1,159 @@
+{
+  "generatedBy": "lyria-3.5",
+  "tracks": [
+    {
+      "id": "vice_city_gambit",
+      "file": "music/Sun_Drenched_Alibi.mp3",
+      "title": "Vice City Gambit",
+      "station": "Leonida Nights FM",
+      "tags": [
+        "title",
+        "match"
+      ]
+    },
+    {
+      "id": "ocean_drive_opening",
+      "file": "music/Pacific_Coast_Velocity.mp3",
+      "title": "Ocean Drive Opening",
+      "station": "Leonida Nights FM",
+      "tags": [
+        "match",
+        "nh1"
+      ]
+    },
+    {
+      "id": "midnight_endgame",
+      "file": "music/Asphalt_and_Rain.mp3",
+      "title": "Midnight Endgame",
+      "station": "Leonida Nights FM",
+      "tags": [
+        "match",
+        "boss"
+      ]
+    },
+    {
+      "id": "boardwalk_hustle",
+      "file": "music/Salt_Air_Swagger.mp3",
+      "title": "Boardwalk Hustle",
+      "station": "Pier 64 Radio",
+      "tags": [
+        "match",
+        "nh1",
+        "hub"
+      ]
+    },
+    {
+      "id": "two_pawn_shuffle",
+      "file": "music/The_Alibi_Swap.mp3",
+      "title": "Two-Pawn Shuffle",
+      "station": "Pier 64 Radio",
+      "tags": [
+        "match",
+        "nh1"
+      ]
+    },
+    {
+      "id": "container_row",
+      "file": "music/Iron_Gate_Nocturne.mp3",
+      "title": "Container Row",
+      "station": "Rustwater Rumble",
+      "tags": [
+        "match",
+        "nh2"
+      ]
+    },
+    {
+      "id": "forklift_freestyle",
+      "file": "music/Palms_in_the_Rearview.mp3",
+      "title": "Forklift Freestyle",
+      "station": "Rustwater Rumble",
+      "tags": [
+        "match",
+        "nh2"
+      ]
+    },
+    {
+      "id": "neon_mile_heat",
+      "file": "music/Running_Through_The_Plaza.mp3",
+      "title": "Neon Mile Heat",
+      "station": "Neon Mile 103",
+      "tags": [
+        "match",
+        "nh3"
+      ]
+    },
+    {
+      "id": "velvet_rope",
+      "file": "music/The_Last_Gambit.mp3",
+      "title": "Velvet Rope",
+      "station": "Neon Mile 103",
+      "tags": [
+        "match",
+        "nh3",
+        "boss"
+      ]
+    },
+    {
+      "id": "gated_community_bossa",
+      "file": "music/Afternoon_on_the_Terrace.mp3",
+      "title": "Gated Community Bossa",
+      "station": "Crown Hills Lounge",
+      "tags": [
+        "match",
+        "nh4",
+        "puzzle",
+        "hub"
+      ]
+    },
+    {
+      "id": "hoa_meeting",
+      "file": "music/Sunset_Over_Biscayne.mp3",
+      "title": "HOA Meeting",
+      "station": "Crown Hills Lounge",
+      "tags": [
+        "match",
+        "nh4",
+        "puzzle"
+      ]
+    },
+    {
+      "id": "burner_phone",
+      "file": "music/Three_Blocks_North.mp3",
+      "title": "Burner Phone",
+      "station": "Burner Phone Beats",
+      "tags": [
+        "hub",
+        "puzzle"
+      ]
+    },
+    {
+      "id": "street_smarts",
+      "file": "music/The_High_Rise_Gambit.mp3",
+      "title": "Street Smarts",
+      "station": "Burner Phone Beats",
+      "tags": [
+        "hub",
+        "puzzle"
+      ]
+    },
+    {
+      "id": "the_long_game",
+      "file": "music/Calculated_Force.mp3",
+      "title": "The Long Game",
+      "station": "Nocturno Tower",
+      "tags": [
+        "city_boss",
+        "boss"
+      ]
+    },
+    {
+      "id": "hq_raid",
+      "file": "music/Harpsichord_Heist.mp3",
+      "title": "HQ Raid",
+      "station": "Nocturno Tower",
+      "tags": [
+        "boss"
+      ]
+    }
+  ]
+}

@@ -24,16 +24,17 @@ Dev and test helpers:
 ## How to play
 
 1. On the title screen, pick **vs AI** or **Local 2-player**, your crew (white or black) and the AI level. Or pick **Hustler** for the campaign (see below).
-2. Click one of your pieces. Legal destinations light up, and captures are shown in red.
-3. Click a destination to move there. Click anything else to deselect.
+2. Click one of your pieces, or press on it and drag. Legal destinations light up, and captures are shown in red.
+3. Click a destination, or release the dragged piece over it, to move there. Click anything else to deselect.
 4. When a pawn reaches the last rank, the **UPGRADE** phone menu opens and you choose Heli, Truck, Car or Bike.
 
 ### Controls
 
 | Input | Action |
 |---|---|
-| Left click | Select or move |
-| Drag / wheel | Orbit or zoom the camera |
+| Left click | Select or move (with a piece selected, clicking anything that covers a legal square, such as your king's head in front of it, counts as that square) |
+| Drag a piece | Pick it up and drop it on a highlighted square; dropping anywhere else puts it back |
+| Drag empty space / wheel | Orbit or zoom the camera |
 | `U` | Undo (in AI mode this takes back your move and the AI's reply) |
 | `F` | Flip the view to the other side |
 | `C` | Toggle between the player view and the top-down camera |

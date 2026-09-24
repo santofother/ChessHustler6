@@ -51,20 +51,20 @@ function shortName(s) {
 }
 
 /** Pure economy step (exported for tests). Returns new {cash, wanted}. */
-export function applyEconomy(prev, m, { check, mate }) {
+export function applyEconomy(prev, m, { check, mate, table = CASH, checkBonus = CHECK_BONUS, mateBonus = MATE_BONUS }) {
   const cash = { ...prev.cash };
   let wanted = prev.wanted;
   if (m.captured) {
-    cash[m.color] += CASH[m.captured] || 0;
+    cash[m.color] += table[m.captured] || 0;
     wanted += 1;
   }
   if (check) {
-    cash[m.color] += CHECK_BONUS;
+    cash[m.color] += checkBonus;
     wanted += 2;
   }
   if (!m.captured && !check) wanted -= 1;
   if (mate) {
-    cash[m.color] += MATE_BONUS;
+    cash[m.color] += mateBonus;
     wanted = 5;
   }
   wanted = Math.max(0, Math.min(5, wanted));
@@ -144,6 +144,11 @@ export class GameController {
     this.hud.setThinking?.(false);
     this.rules.reset();
     this.econ = { cash: { w: 0, b: 0 }, wanted: 0 };
+    this.world.setCashTable?.(null);
+    if (this.sfx?.music) {
+      this.sfx.music.matchTag = null;
+      if (this.sfx.music.available) this.sfx.startRadio('title');
+    }
     this.world.setPosition(this.rules.board());
     this.world.highlight({});
     this.setWanted(0);
@@ -218,6 +223,7 @@ export class GameController {
     this.selected = null;
     this.econ = { cash: { w: 0, b: 0 }, wanted: 0 };
     this.econHistory = [];
+    this.world.setCashTable?.(this.custom?.cashTable || null);
     this.lastTauntPly = -99;
     this.cameraTop = false;
 
@@ -241,7 +247,8 @@ export class GameController {
       const them = String(c.opponent?.crew || c.opponent?.name || CREW.b).toUpperCase();
       this.hud.flash(`${me} vs ${them}`, 'info');
       const intro = c.opponent?.lines?.intro;
-      if (intro) this.smsLater(intro, 1400);
+      if (c.voice?.available) c.voice.start(); // speech bubbles from the kings replace the SMS intro
+      else if (intro) this.smsLater(intro, 1400);
     } else if (this.opts.mode === 'ai') {
       const ai = other(this.opts.playerColor);
       this.hud.flash(`${CREW[this.opts.playerColor]} vs ${CREW[ai]}`, 'info');
@@ -279,6 +286,7 @@ export class GameController {
     const turn = this.rules.turn();
     const human = this.isHumanTurn(turn);
     this.hud.setTurn(turn, human);
+    this.custom?.voice?.onTurn(human);
     if (human) {
       this.state = 'human';
       this.world.setInputEnabled?.(true);
@@ -342,7 +350,11 @@ export class GameController {
     this.hud.updateMinimap(board, lastMove, this.viewColor);
 
     // economy & heat
-    this.econ = applyEconomy(this.econ, m, { check: !!check, mate });
+    // Hustler jobs pay the node's capture bounties (no check/mate bonus); the real payout is on the results screen
+    const table = this.custom?.cashTable;
+    this.econ = applyEconomy(this.econ, m, table
+      ? { check: !!check, mate, table, checkBonus: 0, mateBonus: 0 }
+      : { check: !!check, mate });
     this.hud.setCash({ ...this.econ.cash });
     this.setWanted(this.econ.wanted);
     if (m.captured) this.sfx?.play('cash');
@@ -352,7 +364,11 @@ export class GameController {
     }
     this.resetLap();
 
-    if (!over) this.maybeTaunt(m, !!check);
+    const voice = this.custom?.voice;
+    if (voice?.available) {
+      if (over) voice.end(over);
+      else voice.onMove(m, { check: !!check, board });
+    } else if (!over) this.maybeTaunt(m, !!check);
 
     if (over) await this.endGame(over);
     else this.nextTurn();
@@ -389,6 +405,7 @@ export class GameController {
     this.hud.setThinking?.(false);
     this.world.setInputEnabled?.(false);
     this.world.setCameraPreset?.('cinematic');
+    if (resigned && this.custom?.voice?.available) this.custom.voice.end(over);
 
     const perspective = this.opts.mode === 'ai' ? this.opts.playerColor : null;
     let text;
@@ -539,6 +556,9 @@ export class GameController {
         this.hud.flash(muted ? 'RADIO OFF' : 'RADIO ON', 'info');
         return;
       }
+      case 'audio': // phone SOUND button / title AUDIO button → volume settings panel (wired in main.js)
+        this.sfx?.play('click');
+        return this.onAudio?.();
       case 'menu':
         this.sfx?.play('click');
         if (this.custom && typeof this.custom.onMenu === 'function') {

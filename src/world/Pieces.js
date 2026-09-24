@@ -93,6 +93,46 @@ export function teamMats(color) {
   return t;
 }
 
+/**
+ * Recolor a team's shared materials in place (every piece of that color updates at once).
+ * colors = { primary:'#hex', accent:'#hex' } or null to restore the stock look. Black keeps a darkened body so
+ * the two sides stay readable on the board.
+ */
+export function setTeamColors(color, colors) {
+  const T = TEAM[color];
+  const d = TEAM_DEF[color];
+  if (!T || !d) return;
+  const parse = (v, fb) => {
+    try {
+      return v ? new THREE.Color(v) : new THREE.Color(fb);
+    } catch (_) {
+      return new THREE.Color(fb);
+    }
+  };
+  const base = new THREE.Color(d.primary);
+  let primary = base.clone();
+  if (colors && colors.primary) {
+    primary = parse(colors.primary, d.primary);
+    // keep the contrast between the sides: white stays light, black stays dark
+    primary.lerp(base, color === 'b' ? 0.55 : 0.45);
+  }
+  const accent = colors && colors.accent ? parse(colors.accent, d.accent) : new THREE.Color(d.accent);
+  T.primary.color.copy(primary);
+  T.accent.color.copy(accent);
+  T.accent.emissive.copy(accent);
+  T.neon.color.copy(accent).multiplyScalar(3);
+  if (colors && colors.primary) {
+    const p2 = parse(colors.primary, d.accent2);
+    T.accent2.color.copy(p2);
+    T.accent2.emissive.copy(p2);
+    T.neon2.color.copy(p2).multiplyScalar(3);
+  } else {
+    T.accent2.color.set(d.accent2);
+    T.accent2.emissive.set(d.accent2);
+    T.neon2.color.set(d.accent2).multiplyScalar(3);
+  }
+}
+
 function floralTexture(color) {
   const white = color === 'w';
   const base = white ? '#f4f1ea' : '#141418';
@@ -498,6 +538,7 @@ export class Pieces {
     p.square = square;
     p.root.userData.square = square;
     p.flying = 0;
+    p.dragging = false;
   }
 
   _remove(p) {
@@ -531,14 +572,65 @@ export class Pieces {
   setHover(sq) { this._hoverSq = sq; }
   setSelected(sq) { this._selectedSq = sq; }
 
+  // ------------------------------------------------------------- drag & drop
+  /** Hold the piece on `sq` lifted at world x/z (the pointer's spot on the board). */
+  dragTo(sq, x, z) {
+    const p = this.bySquare.get(sq);
+    if (!p || this._active) return false;
+    p.dragging = true;
+    p.root.position.x = x;
+    p.root.position.z = z;
+    return true;
+  }
+
+  /**
+   * Release a dragged piece. With `drop`, the next animateMove from `sq` to `drop` settles the piece from where
+   * it was released instead of replaying the whole trip; without it the piece slides back to its square.
+   */
+  endDrag(sq, { drop = null } = {}) {
+    const p = this.bySquare.get(sq);
+    if (!p || !p.dragging) return;
+    if (drop) {
+      this._drop = { from: sq, to: drop };
+      return; // stays lifted where it was released until animateMove picks it up
+    }
+    p.dragging = false;
+    const a = sqToXZ(sq);
+    const x0 = p.root.position.x, z0 = p.root.position.z;
+    this.tweener.tween(0.18, (k) => {
+      const e = Ease.outCubic(k);
+      p.root.position.x = x0 + (a.x - x0) * e;
+      p.root.position.z = z0 + (a.z - z0) * e;
+    });
+  }
+
+  /** A dropped piece glides the last bit onto its target square and lands. */
+  _settlePiece(p, to, token, onImpact) {
+    const b = sqToXZ(to);
+    const R = p.root;
+    const x0 = R.position.x, z0 = R.position.z;
+    R.rotation.y = teamYaw(p.color);
+    return this.tweener.tween(0.22, (k) => {
+      const e = Ease.outCubic(k);
+      R.position.x = x0 + (b.x - x0) * e;
+      R.position.z = z0 + (b.z - z0) * e;
+      if (k >= 1) {
+        p.dragging = false;
+        if (onImpact) onImpact();
+        this.effects.dust(b.x, b.z, 6, 0.5);
+        this.onFx('land', { type: p.type });
+      }
+    }, { token });
+  }
+
   // ------------------------------------------------------------- per frame
   update(dt, t) {
     for (const p of this.all) {
       if (p.dead) continue;
       const isHover = !this._active && p.square === this._hoverSq && !p.flying;
       const isSel = p.square === this._selectedSq && !p.flying;
-      const targetLift = isSel ? 0.1 + Math.sin(t * 5 + p.phase) * 0.025 : isHover ? 0.06 : 0;
-      p.lift += (targetLift - p.lift) * Math.min(1, dt * 12);
+      const targetLift = p.dragging ? 0.45 : isSel ? 0.1 + Math.sin(t * 5 + p.phase) * 0.025 : isHover ? 0.06 : 0;
+      p.lift += (targetLift - p.lift) * Math.min(1, dt * (p.dragging ? 18 : 12));
       let y = p.lift;
       const breathe = Math.sin(t * 2.2 + p.phase);
       switch (p.type) {
@@ -613,10 +705,15 @@ export class Pieces {
     const ctx = { token, mover, victim, rook, to, castle, promotion, color, victimState: victim ? 'pending' : 'none', promoted: false, captured };
     this._active = ctx;
 
+    // a drag-and-drop move: the piece is already over its target, so it just settles instead of replaying the trip
+    const dropped = this._drop && this._drop.from === from && this._drop.to === to && mover.dragging;
+    this._drop = null;
+
     const run = async () => {
       this.onFx('move', { type, color, from, to });
       if (castle) this.onFx('castle', { color });
-      const jobs = [this._animatePiece(mover, from, to, token, victim ? () => this._doCapture(ctx) : null)];
+      const onImpact = victim ? () => this._doCapture(ctx) : null;
+      const jobs = [dropped ? this._settlePiece(mover, to, token, onImpact) : this._animatePiece(mover, from, to, token, onImpact)];
       if (rook) {
         jobs.push(tw.wait(0.15, token).then(() => (token.cancelled ? null : this._animatePiece(rook, castle.rookFrom, castle.rookTo, token, null))));
       }
@@ -642,7 +739,7 @@ export class Pieces {
     this._active = null;
     this.tweener.cancel(ctx.token);
     const { mover, rook } = ctx;
-    if (!mover.dead) { this._place(mover, ctx.to); mover.wheelSpin = 0; mover.rotorSpeed = 1; }
+    if (!mover.dead) { this._place(mover, ctx.to); mover.wheelSpin = 0; mover.rotorSpeed = 1; mover.dragging = false; }
     if (rook && !rook.dead) { this._place(rook, ctx.castle.rookTo); rook.wheelSpin = 0; }
     if (ctx.victim && ctx.victimState === 'pending') { ctx.victimState = 'gone'; this._remove(ctx.victim); }
     if (ctx.promotion && ctx.promotion !== 'p' && !ctx.promoted) this._doPromotion(ctx, false);

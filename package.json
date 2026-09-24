@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "ai:bench": "node tools/ai_bench.mjs",
-    "test": "node tools/rules_test.mjs"
+    "test": "node tools/rules_test.mjs && node tools/hustler_test.mjs"
   },
   "keywords": [],
   "author": "",

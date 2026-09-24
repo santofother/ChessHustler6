@@ -279,7 +279,7 @@ export class Effects {
     // scorch decal via skid pool (a dark blot)
     this._scorch(x, z);
     // cash popup
-    const amt = victim ? CASH[victim.type] || 0 : 0;
+    const amt = victim ? (this.cashTable || CASH)[victim.type] || 0 : 0;
     if (amt > 0) this.cashPopup(x, z, amt);
     this.shake(big ? 0.26 : 0.18, 0.45);
   }
